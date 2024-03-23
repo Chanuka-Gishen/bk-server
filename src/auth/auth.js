@@ -22,12 +22,18 @@ export const verifyToken = async (req, res, next) => {
       token = token.slice(7, token.length).trimLeft();
     }
 
-    const user = await EmployeeModel.findOne({ employeeToken: token });
+    const user = await EmployeeModel.findOne({ empToken: token });
 
     if (!user) {
       return res
         .status(http.NOT_FOUND)
         .json(ApiResponse.error(auth_error_code, token_not_found));
+    }
+
+    if (!user.empIsActive) {
+      return res
+        .status(http.SERVICE_UNAVAILABLE)
+        .json(ApiResponse.error(auth_error_code, access_denied));
     }
 
     const verified = jwt.verify(token, process.env.JWT_SECRET);

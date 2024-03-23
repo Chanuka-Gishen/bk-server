@@ -3,8 +3,8 @@ import EmployeeModel from "../models/employeeModel.js";
 
 export const createDefaultAdmin = async (req, res) => {
   try {
-    const employeeUserName = process.env.DEFAULT_ADMIN_FNAME.toLowerCase();
-    const existingAdmin = await EmployeeModel.findOne({ employeeUserName });
+    const empUserName = process.env.DEFAULT_ADMIN_FNAME.toLowerCase();
+    const existingAdmin = await EmployeeModel.findOne({ empUserName });
 
     if (existingAdmin) {
       console.log("Admin exists");
@@ -12,15 +12,15 @@ export const createDefaultAdmin = async (req, res) => {
     }
 
     const newUser = new EmployeeModel({
-      employeeFirstName: process.env.DEFAULT_ADMIN_FNAME,
-      employeeLastName: process.env.DEFAULT_ADMIN_LNAME,
-      employeeUserName,
-      employeeRole: ADMIN_ROLE,
-      employeePassword: process.env.DEFAULT_ADMIN_PWD,
+      empFirstName: process.env.DEFAULT_ADMIN_FNAME,
+      empLastName: process.env.DEFAULT_ADMIN_LNAME,
+      empUserName,
+      empRole: ADMIN_ROLE,
+      empPassword: process.env.DEFAULT_ADMIN_PWD,
     });
 
     const user = await newUser.save();
-    console.log("Admin Created - " + user.employeeUserName);
+    console.log("Admin Created - " + user.empUserName);
 
     return;
   } catch (error) {

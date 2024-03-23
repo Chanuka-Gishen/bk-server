@@ -1,4 +1,5 @@
 import httpStatus from "http-status";
+import bcrypt from "bcrypt";
 
 import {
   auth_success_code,
@@ -27,43 +28,40 @@ export const loginController = async (req, res) => {
         .json(ApiResponse.error(bad_request_code, error.message));
     }
 
-    const { employeeUserName, employeePassword } = value;
+    const { empUserName, empPassword } = value;
     const user = await EmployeeModel.findOne({
-      employeeUserName: employeeUserName.toLowerCase(),
+      empUserName: empUserName.toLowerCase(),
     });
 
     if (!user)
       return res
-        .status(httpStatus.OK)
+        .status(httpStatus.NOT_FOUND)
         .json(ApiResponse.response(emp_error_code, emp_not_found));
 
-    if (!user.employeeIsActive) {
+    if (!user.empIsActive) {
       return res
-        .status(httpStatus.OK)
+        .status(httpStatus.BAD_REQUEST)
         .json(ApiResponse.response(emp_error_code, emp_accecss_removed));
     }
 
-    if (!user.employeeNewPwd) {
-      const isMatch = await bcrypt.compare(
-        employeePassword,
-        user.employeePassword
-      );
+    if (!user.empNewPwd) {
+      const isMatch = await bcrypt.compare(empPassword, user.empPassword);
       if (!isMatch)
         return res
-          .status(httpStatus.OK)
+          .status(httpStatus.PRECONDITION_FAILED)
           .json(ApiResponse.response(emp_error_code, employee_incorrect_pwd));
     } else {
-      user.employeePassword = employeePassword;
-      user.employeeNewPwd = false;
+      user.empPassword = empPassword;
+      user.empNewPwd = false;
     }
 
-    const token = generateToken(user._id, user.employeeRole);
+    const token = generateToken(user._id, user.empRole);
 
-    user.employeeToken = token;
+    user.empToken = token;
 
     const updatedUser = await user.save();
 
-    delete updatedUser.employeePassword;
+    delete updatedUser.empPassword;
     return res
       .status(httpStatus.OK)
       .json(
@@ -87,7 +85,7 @@ export const logoutController = async (req, res) => {
         .status(httpStatus.NOT_FOUND)
         .json(ApiResponse.response(emp_error_code, emp_not_found));
 
-    user.employeeToken = null;
+    user.empToken = null;
 
     await user.save();
 

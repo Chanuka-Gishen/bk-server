@@ -10,39 +10,39 @@ import {
 const Schema = mongoose.Schema;
 
 const employeeSchema = new Schema({
-  employeeFirstName: {
+  empFirstName: {
     type: String,
     required: true,
   },
-  employeeLastName: {
+  empLastName: {
     type: String,
     required: true,
   },
-  employeeUserName: {
+  empUserName: {
     type: String,
     required: true,
     unique: true,
   },
-  employeeRole: {
+  empRole: {
     type: String,
     enum: [ADMIN_ROLE, MANAGER_ROLE, STAFF_ROLE],
     required: true,
   },
-  employeePassword: {
+  empPassword: {
     type: String,
     required: true,
   },
-  employeeNewPwd: {
+  empNewPwd: {
     type: Boolean,
     required: true,
     default: true,
   },
-  employeeIsActive: {
+  empIsActive: {
     type: Boolean,
     required: true,
     default: true,
   },
-  employeeToken: {
+  empToken: {
     type: String,
     default: null,
   },
@@ -51,14 +51,14 @@ const employeeSchema = new Schema({
 employeeSchema.pre("save", async function (next) {
   const employee = this;
 
-  if (!employee.isModified("employeePassword")) {
+  if (!employee.isModified("empPassword")) {
     return next();
   }
 
   try {
     const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(employee.employeePassword, salt);
-    employee.employeePassword = hashedPassword;
+    const hashedPassword = await bcrypt.hash(employee.empPassword, salt);
+    employee.empPassword = hashedPassword;
     next();
   } catch (error) {
     return next(error);
