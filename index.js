@@ -38,6 +38,7 @@ app.use((err, req, res, next) => {
   res.status(statusCode).json(ApiResponse.error(statusCode, errorMessage));
 });
 
+app.get("/", (req, res) => res.send("BOOKKEEPING SERVER"));
 app.use("/server", router);
 
 mongoose.connect(process.env.MONGODB_URL);
