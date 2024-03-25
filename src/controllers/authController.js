@@ -61,12 +61,18 @@ export const loginController = async (req, res) => {
 
     const updatedUser = await user.save();
 
-    delete updatedUser.empPassword;
-    return res
-      .status(httpStatus.OK)
-      .json(
-        ApiResponse.response(auth_success_code, logged_in_success, updatedUser)
-      );
+    return res.status(httpStatus.OK).json(
+      ApiResponse.response(auth_success_code, logged_in_success, {
+        _id: updatedUser._id,
+        empFirstName: updatedUser.empFirstName,
+        empLastName: updatedUser.empLastName,
+        empUserName: updatedUser.empUserName,
+        empRole: updatedUser.empRole,
+        empIsActive: updatedUser.empIsActive,
+        empNewPwd: updatedUser.empNewPwd,
+        empToken: updatedUser.empToken,
+      })
+    );
   } catch (error) {
     console.log(error);
     return res

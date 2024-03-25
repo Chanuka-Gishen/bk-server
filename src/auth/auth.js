@@ -26,7 +26,7 @@ export const verifyToken = async (req, res, next) => {
 
     if (!user) {
       return res
-        .status(http.NOT_FOUND)
+        .status(http.UNAUTHORIZED)
         .json(ApiResponse.error(auth_error_code, token_not_found));
     }
 
