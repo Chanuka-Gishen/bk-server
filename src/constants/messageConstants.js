@@ -16,3 +16,12 @@ export const emp_updated = "Successfully updated";
 export const emp_pwd_reset = "Successfully reseted";
 
 export const book_exists = "SalesBook already created";
+
+export const creditor_exists = "Creditor already exists";
+export const creditor_created = "Creditor created successfully";
+export const creditor_updated = "Creditor updated successfully";
+export const creditor_not_found = "Creditor not found";
+
+export const credInvoice_created = "Creditor invoice added";
+export const credInvoice_updated = "Creditor invoice updated";
+export const credInvoice_not_found = "Creditor invoice not found";

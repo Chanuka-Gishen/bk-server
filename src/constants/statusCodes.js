@@ -17,3 +17,13 @@ export const salesBook_success_code = "BOOK-001";
 export const salesBook_info_code = "BOOK-002";
 export const salesBook_warning_code = "BOOK-003";
 export const salesBook_error_code = "BOOK-004";
+
+export const creditor_success_code = "CRED-001";
+export const creditor_info_code = "CRED-002";
+export const creditor_warning_code = "CRED-003";
+export const creditor_error_code = "CRED-004";
+
+export const credInvoice_success_code = "CRDI-001";
+export const credInvoice_info_code = "CRDI-002";
+export const credInvoice_warning_code = "CRDI-003";
+export const credInvoice_error_code = "CRDI-004";
