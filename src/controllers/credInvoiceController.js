@@ -168,3 +168,45 @@ export const creditorInvoicesController = async (req, res) => {
       .json(ApiResponse.error(bad_request_code, error.message));
   }
 };
+
+// Filter creditors invoices - from remaings no of days []
+export const filterCreInvoicessByDaysController = async (req, res) => {
+  try {
+    const noOfDays = req.body.days;
+
+    let invoices;
+
+    if (!noOfDays) {
+      invoices = await CredInvoiceModel.find({
+        credInvoiceStatus: PAYMENT_STATUS.NOTPAID,
+      })
+        .populate("credInvoicedCreditor")
+        .sort({ credInvoiceDueDate: 1 });
+    } else {
+      const dueDateFrom = new Date();
+      dueDateFrom.setDate(dueDateFrom.getDate() + noOfDays);
+
+      invoices = await CredInvoiceModel.find({
+        credInvoiceStatus: PAYMENT_STATUS.NOTPAID,
+        credInvoiceDueDate: { $gte: dueDateFrom },
+      })
+        .populate("credInvoicedCreditor")
+        .sort({ credInvoiceDueDate: 1 });
+    }
+
+    res
+      .status(httpStatus.OK)
+      .json(
+        ApiResponse.response(
+          credInvoice_success_code,
+          success_message,
+          invoices
+        )
+      );
+  } catch (error) {
+    console.log(error);
+    return res
+      .status(httpStatus.BAD_REQUEST)
+      .json(ApiResponse.error(bad_request_code, error.message));
+  }
+};

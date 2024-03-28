@@ -6,6 +6,7 @@ import { ADMIN_ROLE, MANAGER_ROLE } from "../constants/employeeRoles.js";
 import {
   addCredInvoiceController,
   creditorInvoicesController,
+  filterCreInvoicessByDaysController,
   updateCredInvoiceController,
 } from "../controllers/credInvoiceController.js";
 
@@ -25,6 +26,11 @@ credInvoiceRoutes.get(
   "/creditor/:id",
   [verifyToken],
   creditorInvoicesController
+);
+credInvoiceRoutes.post(
+  "/filterByDays",
+  [verifyToken],
+  filterCreInvoicessByDaysController
 );
 
 export default credInvoiceRoutes;

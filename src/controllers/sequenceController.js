@@ -19,6 +19,27 @@ export const createSequence = async (title) => {
   return await sequence.save();
 };
 
+// Update sequence code
+export const updateSequence = async (id, title) => {
+  const sequenceCode = `${title.replace(/\s+/g, "").toLowerCase()}_sequence`;
+
+  const existingSequence = await SequenceModel.findOne({ sequenceCode });
+
+  if (existingSequence) {
+    return;
+  }
+
+  const sequence = await SequenceModel.findById(new ObjectId(id));
+
+  if (!sequence) {
+    return;
+  }
+
+  sequence.sequenceCode = sequenceCode;
+
+  return await sequence.save();
+};
+
 // Get sequence value
 export const getSequenceValue = async (id) => {
   const value = await SequenceModel.findById(new ObjectId(id));

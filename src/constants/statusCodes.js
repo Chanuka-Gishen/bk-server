@@ -27,3 +27,8 @@ export const credInvoice_success_code = "CRDI-001";
 export const credInvoice_info_code = "CRDI-002";
 export const credInvoice_warning_code = "CRDI-003";
 export const credInvoice_error_code = "CRDI-004";
+
+export const invoice_success_code = "INVO-001";
+export const invoice_info_code = "INVO-002";
+export const invoice_warning_code = "INVO-003";
+export const invoice_error_code = "INVO-004";
