@@ -15,6 +15,7 @@ import {
   credInvoice_not_found,
   credInvoice_updated,
   creditor_not_found,
+  invoice_deleted,
   success_message,
 } from "../constants/messageConstants.js";
 import CredInvoiceModel from "../models/creditorInvoiceModel.js";
@@ -127,6 +128,32 @@ export const updateCredInvoiceController = async (req, res) => {
       .json(
         ApiResponse.response(credInvoice_success_code, credInvoice_updated)
       );
+  } catch (error) {
+    console.log(error);
+    return res
+      .status(httpStatus.BAD_REQUEST)
+      .json(ApiResponse.error(bad_request_code, error.message));
+  }
+};
+
+// Delete creditor invoice
+export const creditorInvoiceDeleteController = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const invoice = await CredInvoiceModel.findById(new ObjectId(id));
+
+    if (!invoice) {
+      return res
+        .status(httpStatus.BAD_REQUEST)
+        .json(ApiResponse.error(credInvoice_error_code, credInvoice_not_found));
+    }
+
+    await CredInvoiceModel.deleteOne(invoice);
+
+    return res
+      .status(httpStatus.OK)
+      .json(ApiResponse.response(credInvoice_success_code, invoice_deleted));
   } catch (error) {
     console.log(error);
     return res

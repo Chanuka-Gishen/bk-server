@@ -5,6 +5,7 @@ import { authorize } from "../auth/authorize.js";
 import { ADMIN_ROLE, MANAGER_ROLE } from "../constants/employeeRoles.js";
 import {
   addCredInvoiceController,
+  creditorInvoiceDeleteController,
   creditorInvoicesController,
   filterCreInvoicessByDaysController,
   updateCredInvoiceController,
@@ -21,6 +22,11 @@ credInvoiceRoutes.put(
   "/update",
   [verifyToken, authorize([ADMIN_ROLE, MANAGER_ROLE])],
   updateCredInvoiceController
+);
+credInvoiceRoutes.delete(
+  "/delete/:id",
+  [verifyToken, authorize([ADMIN_ROLE])],
+  creditorInvoiceDeleteController
 );
 credInvoiceRoutes.get(
   "/creditor/:id",
