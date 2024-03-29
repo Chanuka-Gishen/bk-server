@@ -22,10 +22,6 @@ creditorRoutes.put(
   [verifyToken, authorize([ADMIN_ROLE, MANAGER_ROLE])],
   updateCreditorController
 );
-creditorRoutes.get(
-  "/details/:id",
-  [verifyToken, authorize([ADMIN_ROLE, MANAGER_ROLE])],
-  getCreditorDetailsController
-);
+creditorRoutes.get("/details/:id", [verifyToken], getCreditorDetailsController);
 
 export default creditorRoutes;
