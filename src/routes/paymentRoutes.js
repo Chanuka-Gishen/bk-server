@@ -24,7 +24,7 @@ paymentRoutes.put(
 );
 paymentRoutes.delete(
   "/delete/:id",
-  [verifyToken, authorize([ADMIN_ROLE, MANAGER_ROLE])],
+  [verifyToken, authorize([ADMIN_ROLE])],
   PaymentDeleteController
 );
 paymentRoutes.get("/invoices", [verifyToken], PaymentsGetController);

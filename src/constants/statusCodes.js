@@ -8,6 +8,8 @@ export const bad_request_code = "RQST-004";
 export const auth_success_code = "AUTH-001";
 export const auth_error_code = "AUTH-004";
 
+export const permission_error_code = "PERM-004";
+
 export const emp_success_code = "EMPL-001";
 export const emp_info_code = "EMPL-002";
 export const emp_warning_code = "EMPL-003";

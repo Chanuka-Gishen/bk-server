@@ -215,7 +215,7 @@ export const filterCreInvoicessByDaysController = async (req, res) => {
 
       invoices = await CredInvoiceModel.find({
         credInvoiceStatus: PAYMENT_STATUS.NOTPAID,
-        credInvoiceDueDate: { $gte: dueDateFrom },
+        credInvoiceDueDate: { $lt: dueDateFrom },
       })
         .populate("credInvoicedCreditor")
         .sort({ credInvoiceDueDate: 1 });
