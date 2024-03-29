@@ -177,7 +177,7 @@ export const creditorInvoicesController = async (req, res) => {
 
     const invoices = await CredInvoiceModel.find({
       credInvoicedCreditor: new ObjectId(creditor._id),
-    });
+    }).sort({ credInvoiceDueDate: 1 });
 
     return res
       .status(httpStatus.OK)

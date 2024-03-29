@@ -32,3 +32,8 @@ export const invoice_success_code = "INVO-001";
 export const invoice_info_code = "INVO-002";
 export const invoice_warning_code = "INVO-003";
 export const invoice_error_code = "INVO-004";
+
+export const payment_success_code = "PAYM-001";
+export const payment_info_code = "PAYM-002";
+export const payment_warning_code = "PAYM-003";
+export const payment_error_code = "PAYM-004";

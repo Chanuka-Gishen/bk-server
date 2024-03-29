@@ -221,7 +221,7 @@ export const invoicesBySalesBooksController = async (req, res) => {
 
     const invoices = await InvoiceModel.find({
       invoiceSalesBookRef: new ObjectId(book._id),
-    });
+    }).sort({ invoiceCreatedAt: 1 });
 
     return res
       .status(httpStatus.OK)

@@ -34,3 +34,8 @@ export const invoices_created_bulk = "Invoices added";
 export const invoice_not_found = "Invoice not found";
 export const invoice_updated = "Invoice updated";
 export const invoice_deleted = "Invoice successfully deleted";
+
+export const payment_added = "Payment added";
+export const payment_updated = "Payment update";
+export const payment_deleted = "Payment record deleted";
+export const payment_not_found = "Payment record not found";
