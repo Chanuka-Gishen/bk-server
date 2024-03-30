@@ -1,3 +1,5 @@
+export const server_default_message = "BOOKKEEPING SERVER";
+
 export const access_denied = "Access Denied";
 export const insufficient_permissions = "Forbidden: Insufficient permissions";
 export const token_not_found = "Session not found";
