@@ -9,6 +9,7 @@ import mongoose from "mongoose";
 import ApiResponse from "./src/services/ApiResponse.js";
 import { createDefaultAdmin } from "./src/controllers/employeeController.js";
 import router from "./src/routes/index.js";
+import { server_default_message } from "./src/constants/messageConstants.js";
 
 dotenv.config();
 const app = express();
@@ -38,7 +39,7 @@ app.use((err, req, res, next) => {
   res.status(statusCode).json(ApiResponse.error(statusCode, errorMessage));
 });
 
-app.get("/", (req, res) => res.send("BOOKKEEPING SERVER"));
+app.get("/", (req, res) => res.send(server_default_message));
 app.use("/server", router);
 
 mongoose.connect(process.env.MONGODB_URL);
