@@ -39,6 +39,9 @@ app.use((err, req, res, next) => {
   res.status(statusCode).json(ApiResponse.error(statusCode, errorMessage));
 });
 
+app.get("/", (req, res) => res.send(server_default_message));
+app.use("/server", router);
+
 mongoose.connect(process.env.MONGODB_URL);
 
 const db = mongoose.connection;
@@ -51,9 +54,6 @@ db.once("connected", () => {
   console.log("Connected to MongoDB");
 
   createDefaultAdmin();
-
-  app.get("/", (req, res) => res.send(server_default_message));
-  app.use("/server", router);
 
   app.listen(port, () => {
     console.log(`Server is running at http://localhost:${port}`);
