@@ -24,6 +24,11 @@ const credInvoiceSchema = new Schema({
     required: true,
     default: 0,
   },
+  credInvoiceBalance: {
+    type: Number,
+    required: true,
+    default: 0,
+  },
   credInvoiceDueDate: {
     type: Date,
     required: true,

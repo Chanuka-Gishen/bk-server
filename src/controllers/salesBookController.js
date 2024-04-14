@@ -28,7 +28,7 @@ export const createSalesBookController = async (req, res) => {
         .json(ApiResponse.error(bad_request_code, error.message));
     }
 
-    const { bookName } = value;
+    const { bookName, bookType } = value;
 
     const existingBook = await SalesBookModel.findOne({ bookName });
 
@@ -48,6 +48,7 @@ export const createSalesBookController = async (req, res) => {
 
     const newBook = new SalesBookModel({
       bookName,
+      bookType,
       bookSequence: new ObjectId(sequence._id),
     });
 

@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { INVOICE_TYPES } from "../constants/invoiceTypes.js";
 
 const Schema = mongoose.Schema;
 
@@ -12,6 +13,11 @@ const salesBookSchema = new Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Sequence",
     required: true,
+  },
+  bookType: {
+    type: String,
+    required: true,
+    enum: [INVOICE_TYPES.RANGE, INVOICE_TYPES.SINGLE, INVOICE_TYPES.CREDITOR],
   },
   bookCreatedDate: {
     type: Date,

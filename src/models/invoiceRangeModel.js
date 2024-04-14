@@ -2,7 +2,8 @@ import mongoose from "mongoose";
 
 const Schema = mongoose.Schema;
 
-const invoiceSchema = new Schema({
+// Multiple invoices entry
+const invoiceRangeSchema = new Schema({
   invoiceNoFrom: {
     type: Number,
     required: true,
@@ -15,17 +16,21 @@ const invoiceSchema = new Schema({
     type: Date,
     required: true,
   },
-  invoiceAmount: {
-    type: Number,
-    required: true,
-  },
   invoiceSalesBookRef: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "SalesBook",
     required: true,
   },
+  invoiceInAmount: {
+    type: Number,
+    required: true,
+  },
+  invoiceOutAmount: {
+    type: Number,
+    required: true,
+  },
 });
 
-const InvoiceModel = mongoose.model("Invoices", invoiceSchema);
+const InvoiceRangeModel = mongoose.model("RangeInvoices", invoiceRangeSchema);
 
-export default InvoiceModel;
+export default InvoiceRangeModel;

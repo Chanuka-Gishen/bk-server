@@ -36,6 +36,11 @@ export const invoices_created_bulk = "Invoices added";
 export const invoice_not_found = "Invoice not found";
 export const invoice_updated = "Invoice updated";
 export const invoice_deleted = "Invoice successfully deleted";
+export const invoice_invalid_type = "Invalid invoice type";
+export const invoice_balance_not_invalid =
+  "Amount exceeded the remaing balance";
+export const invoice_invalid_amount = "Payments have made for this invoice";
+export const invoice_already_paid = "Invoice already paid";
 
 export const payment_added = "Payment added";
 export const payment_updated = "Payment update";

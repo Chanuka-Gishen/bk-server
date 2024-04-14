@@ -16,11 +16,13 @@ import {
   credInvoice_updated,
   creditor_not_found,
   invoice_deleted,
+  invoice_invalid_amount,
   success_message,
 } from "../constants/messageConstants.js";
 import CredInvoiceModel from "../models/creditorInvoiceModel.js";
 import { CredInvoiceUpdateSchema } from "../schemas/credInvoiceUpdateSchema.js";
 import { PAYMENT_STATUS } from "../constants/paymentStatus.js";
+import InvoiceCreditorModel from "../models/invoiceCreditorModel.js";
 
 // Add creditor invoice
 export const addCredInvoiceController = async (req, res) => {
@@ -101,11 +103,31 @@ export const updateCredInvoiceController = async (req, res) => {
         .json(ApiResponse.error(credInvoice_error_code, credInvoice_not_found));
     }
 
+    const paymentInvoices = await InvoiceCreditorModel.find({
+      invoiceCreditorInvoiceRef: new ObjectId(credInvoice._id),
+    });
+    const totalPayments = paymentInvoices.reduce(
+      (total, invoice) => total + invoice.invoiceAmount,
+      0
+    );
+
     const creditor = await CreditorModel.findById(
       new ObjectId(credInvoice.credInvoicedCreditor)
     );
 
+    if (totalPayments > credInvoiceAmount) {
+      return res
+        .status(httpStatus.BAD_REQUEST)
+        .json(
+          ApiResponse.error(credInvoice_error_code, invoice_invalid_amount)
+        );
+    }
+
+    const difference = credInvoiceAmount - credInvoice.credInvoiceAmount;
+    const newBalance = difference + credInvoice.credInvoiceBalance;
+
     credInvoice.credInvoiceAmount = credInvoiceAmount;
+    credInvoice.credInvoiceBalance = newBalance;
     credInvoice.credInvoiceNo = credInvoiceNo;
     credInvoice.credInvoiceStatus = credInvoiceStatus;
     credInvoice.credInvoicePaidDate =
@@ -149,6 +171,10 @@ export const creditorInvoiceDeleteController = async (req, res) => {
         .json(ApiResponse.error(credInvoice_error_code, credInvoice_not_found));
     }
 
+    await InvoiceCreditorModel.deleteMany({
+      invoiceCreditorInvoiceRef: new ObjectId(invoice._id),
+    });
+
     await CredInvoiceModel.deleteOne(invoice);
 
     return res
@@ -175,9 +201,69 @@ export const creditorInvoicesController = async (req, res) => {
         .json(ApiResponse.error(creditor_error_code, creditor_not_found));
     }
 
-    const invoices = await CredInvoiceModel.find({
-      credInvoicedCreditor: new ObjectId(creditor._id),
-    }).sort({ credInvoiceDueDate: 1 });
+    const invoices = await CredInvoiceModel.aggregate([
+      {
+        $match: {
+          credInvoicedCreditor: new ObjectId(creditor._id),
+        },
+      },
+      {
+        $lookup: {
+          from: "creditorinvoices",
+          localField: "_id",
+          foreignField: "invoiceCreditorInvoiceRef",
+          as: "invoices",
+        },
+      },
+      {
+        $sort: { credInvoiceDueDate: 1 },
+      },
+    ]);
+
+    return res
+      .status(httpStatus.OK)
+      .json(
+        ApiResponse.response(
+          credInvoice_success_code,
+          success_message,
+          invoices
+        )
+      );
+  } catch (error) {
+    console.log(error);
+    return res
+      .status(httpStatus.BAD_REQUEST)
+      .json(ApiResponse.error(bad_request_code, error.message));
+  }
+};
+
+// Get all creditors invoices and payment invoices
+export const getAllCredInvoicesController = async (req, res) => {
+  try {
+    const invoices = await CredInvoiceModel.aggregate([
+      {
+        $lookup: {
+          from: "creditors",
+          localField: "credInvoicedCreditor",
+          foreignField: "_id",
+          as: "creditor",
+        },
+      },
+      {
+        $unwind: "$creditor", // Unwind the 'creditor' field
+      },
+      {
+        $lookup: {
+          from: "creditorinvoices",
+          localField: "_id",
+          foreignField: "invoiceCreditorInvoiceRef",
+          as: "invoices",
+        },
+      },
+      {
+        $sort: { credInvoiceDueDate: 1 },
+      },
+    ]);
 
     return res
       .status(httpStatus.OK)
