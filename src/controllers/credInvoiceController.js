@@ -240,7 +240,12 @@ export const creditorInvoicesController = async (req, res) => {
 // Get all creditors invoices and payment invoices
 export const getAllCredInvoicesController = async (req, res) => {
   try {
-    const invoices = await CredInvoiceModel.aggregate([
+    const date = req.body.filteredDate;
+
+    const pipeline = [
+      {
+        $match: {},
+      },
       {
         $lookup: {
           from: "creditors",
@@ -250,7 +255,7 @@ export const getAllCredInvoicesController = async (req, res) => {
         },
       },
       {
-        $unwind: "$creditor", // Unwind the 'creditor' field
+        $unwind: "$creditor",
       },
       {
         $lookup: {
@@ -263,7 +268,22 @@ export const getAllCredInvoicesController = async (req, res) => {
       {
         $sort: { credInvoiceDueDate: 1 },
       },
-    ]);
+    ];
+
+    if (date) {
+      const filterDate = new Date(date);
+      const startOfDay = new Date(filterDate.setHours(0, 0, 0, 0));
+      const endOfDay = new Date(filterDate.setHours(23, 59, 59, 999));
+
+      pipeline[0].$match = {
+        credInvoicePaidDate: {
+          $gte: startOfDay,
+          $lte: endOfDay,
+        },
+      };
+    }
+
+    const invoices = await CredInvoiceModel.aggregate(pipeline);
 
     return res
       .status(httpStatus.OK)

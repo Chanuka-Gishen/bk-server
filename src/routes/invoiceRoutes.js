@@ -12,6 +12,7 @@ import {
   deleteCreditorPaymentController,
   deleteInvoiceController,
   getCreditorPaymentsInvoices,
+  getTotalPaymentsFilteredByDateController,
   invoicesBySalesBooksController,
   updateInvoiceController,
   updateInvoiceCreditorController,
@@ -69,6 +70,11 @@ invoiceRoutes.post(
   "/bulk-invoices/:id",
   [verifyToken, authorize([ADMIN_ROLE, MANAGER_ROLE]), upload.single("file")],
   addBulkInvoicesForSalesBook
+);
+invoiceRoutes.post(
+  "/payment-total",
+  [verifyToken],
+  getTotalPaymentsFilteredByDateController
 );
 
 export default invoiceRoutes;

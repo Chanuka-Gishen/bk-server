@@ -578,6 +578,57 @@ export const getCreditorPaymentsInvoices = async (req, res) => {
   }
 };
 
+// Get the total payments filtered by date for creditora payments
+export const getTotalPaymentsFilteredByDateController = async (req, res) => {
+  try {
+    const filteredDate = req.body.filteredDate;
+
+    let date;
+
+    if (filteredDate) {
+      date = new Date(date);
+    } else {
+      date = new Date();
+    }
+
+    const startOfDay = new Date(date.setHours(0, 0, 0, 0));
+    const endOfDay = new Date(date.setHours(23, 59, 59, 999));
+
+    const totalAmount = await InvoiceCreditorModel.aggregate([
+      {
+        $match: {
+          invoiceCreatedAt: {
+            $gte: startOfDay,
+            $lte: endOfDay,
+          },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$invoiceAmount" }, // Calculate sum of the invoiceAmount field
+        },
+      },
+    ]);
+
+    console.log(totalAmount);
+    return res
+      .status(httpStatus.OK)
+      .json(
+        ApiResponse.response(
+          invoice_success_code,
+          success_message,
+          totalAmount.length > 0 ? totalAmount[0].total : 0
+        )
+      );
+  } catch (error) {
+    console.log(error);
+    return res
+      .status(httpStatus.BAD_REQUEST)
+      .json(ApiResponse.error(bad_request_code, error.message));
+  }
+};
+
 // Add bulk invoices for a salesbook - Range
 export const addBulkInvoicesForSalesBook = async (req, res) => {
   try {

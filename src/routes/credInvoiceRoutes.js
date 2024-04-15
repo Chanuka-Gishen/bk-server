@@ -34,7 +34,7 @@ credInvoiceRoutes.get(
   [verifyToken],
   creditorInvoicesController
 );
-credInvoiceRoutes.get("/all", [verifyToken], getAllCredInvoicesController);
+credInvoiceRoutes.post("/all", [verifyToken], getAllCredInvoicesController);
 credInvoiceRoutes.post(
   "/filterByDays",
   [verifyToken],
