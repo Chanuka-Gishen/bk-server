@@ -508,6 +508,13 @@ export const deleteCreditorPaymentController = async (req, res) => {
 export const invoicesBySalesBooksController = async (req, res) => {
   try {
     const { id, type } = req.params;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const date = req.body.filteredDate;
+
+    console.log(date);
+
+    const skip = (page - 1) * limit;
 
     let book;
 
@@ -523,21 +530,44 @@ export const invoicesBySalesBooksController = async (req, res) => {
 
     let invoices;
 
+    const pipeline = [
+      {
+        $match: {
+          invoiceSalesBookRef: new ObjectId(book._id),
+        },
+      },
+      {
+        $sort: {
+          invoiceCreatedAt: 1,
+        },
+      },
+      {
+        $skip: skip,
+      },
+      {
+        $limit: limit,
+      },
+    ];
+
+    if (date) {
+      const filterDate = new Date(date);
+      const startOfDay = new Date(filterDate.setHours(0, 0, 0, 0));
+      const endOfDay = new Date(filterDate.setHours(23, 59, 59, 999));
+
+      pipeline[0].$match = {
+        invoiceCreatedAt: {
+          $gte: startOfDay,
+          $lte: endOfDay,
+        },
+      };
+    }
+
     switch (type) {
       case INVOICE_TYPES.RANGE:
-        invoices = await InvoiceRangeModel.find({
-          invoiceSalesBookRef: new ObjectId(book._id),
-        }).sort({ invoiceCreatedAt: 1 });
+        invoices = await InvoiceRangeModel.aggregate(pipeline);
         break;
       case INVOICE_TYPES.SINGLE:
-        invoices = await InvoiceSingleModel.find({
-          invoiceSalesBookRef: new ObjectId(book._id),
-        }).sort({ invoiceCreatedAt: 1 });
-        break;
-      case INVOICE_TYPES.CREDITOR:
-        invoices = await InvoiceCreditorModel.find().sort({
-          invoiceCreatedAt: 1,
-        });
+        invoices = await InvoiceSingleModel.aggregate(pipeline);
         break;
       default:
         break;
@@ -611,7 +641,6 @@ export const getTotalPaymentsFilteredByDateController = async (req, res) => {
       },
     ]);
 
-    console.log(totalAmount);
     return res
       .status(httpStatus.OK)
       .json(
@@ -619,6 +648,76 @@ export const getTotalPaymentsFilteredByDateController = async (req, res) => {
           invoice_success_code,
           success_message,
           totalAmount.length > 0 ? totalAmount[0].total : 0
+        )
+      );
+  } catch (error) {
+    console.log(error);
+    return res
+      .status(httpStatus.BAD_REQUEST)
+      .json(ApiResponse.error(bad_request_code, error.message));
+  }
+};
+
+// Get invoices by salesbooks total in and out amount filtered by date
+export const totalSalesFilteredByDateController = async (req, res) => {
+  try {
+    const { id, type } = req.params;
+    const date = req.body.filteredDate || new Date();
+
+    const filteredDate = new Date(date);
+    const startOfDay = new Date(filteredDate.setHours(0, 0, 0, 0));
+    const endOfDay = new Date(filteredDate.setHours(23, 59, 59, 999));
+
+    let result;
+
+    const commonPipeline = [
+      {
+        $match: {
+          invoiceSalesBookRef: new ObjectId(id),
+          invoiceCreatedAt: {
+            $gte: startOfDay,
+            $lte: endOfDay,
+          },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalInAmount: { $sum: "$invoiceInAmount" },
+          totalOutAmount: { $sum: "$invoiceOutAmount" },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          totalInAmount: 1,
+          totalOutAmount: 1,
+          netAmount: { $subtract: ["$totalInAmount", "$totalOutAmount"] }, // Calculate net in-out value
+        },
+      },
+    ];
+
+    switch (type) {
+      case INVOICE_TYPES.RANGE:
+        result = await InvoiceRangeModel.aggregate(commonPipeline);
+        break;
+      case INVOICE_TYPES.SINGLE:
+        result = await InvoiceSingleModel.aggregate(commonPipeline);
+        break;
+      default:
+        result = null;
+        break;
+    }
+
+    return res
+      .status(httpStatus.OK)
+      .json(
+        ApiResponse.response(
+          invoice_success_code,
+          success_message,
+          result && result.length > 0
+            ? result[0]
+            : { totalInAmount: 0, totalOutAmount: 0, netAmount: 0 }
         )
       );
   } catch (error) {

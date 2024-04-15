@@ -307,6 +307,10 @@ export const filterCreInvoicessByDaysController = async (req, res) => {
   try {
     const noOfDays = req.body.days;
 
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
     let invoices;
 
     if (!noOfDays) {
@@ -314,7 +318,9 @@ export const filterCreInvoicessByDaysController = async (req, res) => {
         credInvoiceStatus: PAYMENT_STATUS.NOTPAID,
       })
         .populate("credInvoicedCreditor")
-        .sort({ credInvoiceDueDate: 1 });
+        .sort({ credInvoiceDueDate: 1 })
+        .skip(skip)
+        .limit(limit);
     } else {
       const dueDateFrom = new Date();
       dueDateFrom.setDate(dueDateFrom.getDate() + noOfDays);

@@ -14,6 +14,7 @@ import {
   getCreditorPaymentsInvoices,
   getTotalPaymentsFilteredByDateController,
   invoicesBySalesBooksController,
+  totalSalesFilteredByDateController,
   updateInvoiceController,
   updateInvoiceCreditorController,
 } from "../controllers/invoiceController.js";
@@ -56,7 +57,7 @@ invoiceRoutes.delete(
   [verifyToken, authorize([ADMIN_ROLE])],
   deleteCreditorPaymentController
 );
-invoiceRoutes.get(
+invoiceRoutes.post(
   "/book/:id/:type",
   [verifyToken],
   invoicesBySalesBooksController
@@ -75,6 +76,11 @@ invoiceRoutes.post(
   "/payment-total",
   [verifyToken],
   getTotalPaymentsFilteredByDateController
+);
+invoiceRoutes.post(
+  "/invoices-net/:id/:type",
+  [verifyToken],
+  totalSalesFilteredByDateController
 );
 
 export default invoiceRoutes;
