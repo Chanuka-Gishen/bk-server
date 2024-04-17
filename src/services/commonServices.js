@@ -11,3 +11,14 @@ export const createRandomPassword = () => {
 
   return randomString;
 };
+
+export const excelSerialDateToJSDate = (serialDate) => {
+  const MS_PER_DAY = 24 * 60 * 60 * 1000; // Number of milliseconds in a day
+  const EPOCH_OFFSET = 25569; // Excel epoch offset (January 1, 1970)
+
+  // Convert Excel serial date to milliseconds since Unix epoch
+  const millisecondsSinceEpoch = (serialDate - EPOCH_OFFSET) * MS_PER_DAY;
+
+  // Create and return a new Date object from the milliseconds
+  return new Date(millisecondsSinceEpoch);
+};

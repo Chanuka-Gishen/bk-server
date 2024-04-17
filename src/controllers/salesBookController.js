@@ -16,6 +16,8 @@ import {
 } from "../constants/messageConstants.js";
 import { createSequence, updateSequence } from "./sequenceController.js";
 import { salesBookUpdateSchema } from "../schemas/salesBookUpdateSchema.js";
+import { calculateNetAmount } from "./cashBalanceController.js";
+import CashBalanceModel from "../models/cashBalanceModel.js";
 
 // Create new sales book
 export const createSalesBookController = async (req, res) => {
@@ -135,6 +137,36 @@ export const getSalesBooksController = async (req, res) => {
           success_message,
           salesBooks
         )
+      );
+  } catch (error) {
+    console.log(error);
+    return res
+      .status(httpStatus.BAD_REQUEST)
+      .json(ApiResponse.error(bad_request_code, error.message));
+  }
+};
+
+// Get total cash balance today
+export const getTotalCashBalanceController = async (req, res) => {
+  try {
+    const currentDate = new Date();
+    const startOfDay = new Date(currentDate.setHours(0, 0, 0, 0));
+    const endOfDay = new Date(currentDate.setHours(23, 59, 59, 999));
+
+    const totalFromInvoices = await calculateNetAmount(currentDate);
+    const openingBalance = await CashBalanceModel.findOne({
+      cashBalanceDate: { $gte: startOfDay, $lte: endOfDay },
+    });
+
+    const total = totalFromInvoices ? totalFromInvoices : 0;
+    const balance = openingBalance ? openingBalance.openingBalance : 0;
+
+    const response = total + balance;
+
+    return res
+      .status(httpStatus.OK)
+      .json(
+        ApiResponse.response(salesBook_success_code, success_message, response)
       );
   } catch (error) {
     console.log(error);

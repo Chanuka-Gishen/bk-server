@@ -241,11 +241,12 @@ export const creditorInvoicesController = async (req, res) => {
 export const getAllCredInvoicesController = async (req, res) => {
   try {
     const date = req.body.filteredDate;
+    const page = parseInt(req.query.page);
+    const limit = parseInt(req.query.limit);
+
+    const skip = page * limit;
 
     const pipeline = [
-      {
-        $match: {},
-      },
       {
         $lookup: {
           from: "creditors",
@@ -266,7 +267,16 @@ export const getAllCredInvoicesController = async (req, res) => {
         },
       },
       {
+        $match: {},
+      },
+      {
         $sort: { credInvoiceDueDate: 1 },
+      },
+      {
+        $skip: skip,
+      },
+      {
+        $limit: limit,
       },
     ];
 
@@ -275,8 +285,8 @@ export const getAllCredInvoicesController = async (req, res) => {
       const startOfDay = new Date(filterDate.setHours(0, 0, 0, 0));
       const endOfDay = new Date(filterDate.setHours(23, 59, 59, 999));
 
-      pipeline[0].$match = {
-        credInvoicePaidDate: {
+      pipeline[3].$match = {
+        "invoices.invoiceCreatedAt": {
           $gte: startOfDay,
           $lte: endOfDay,
         },
@@ -285,15 +295,14 @@ export const getAllCredInvoicesController = async (req, res) => {
 
     const invoices = await CredInvoiceModel.aggregate(pipeline);
 
-    return res
-      .status(httpStatus.OK)
-      .json(
-        ApiResponse.response(
-          credInvoice_success_code,
-          success_message,
-          invoices
-        )
-      );
+    const count = await CredInvoiceModel.countDocuments();
+
+    return res.status(httpStatus.OK).json(
+      ApiResponse.response(credInvoice_success_code, success_message, {
+        invoices,
+        count,
+      })
+    );
   } catch (error) {
     console.log(error);
     return res
@@ -305,43 +314,35 @@ export const getAllCredInvoicesController = async (req, res) => {
 // Filter creditors invoices - from remaings no of days []
 export const filterCreInvoicessByDaysController = async (req, res) => {
   try {
-    const noOfDays = req.body.days;
+    const dateFrom = new Date(req.body.dateFrom);
+    const dateTo = new Date(req.body.dateTo);
 
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
+    const page = parseInt(req.query.page);
+    const limit = parseInt(req.query.limit);
+    const skip = page * limit;
 
-    let invoices;
+    const startOfDay = new Date(dateFrom.setHours(0, 0, 0, 0));
+    const endOfDay = new Date(dateTo.setHours(23, 59, 59, 999));
 
-    if (!noOfDays) {
-      invoices = await CredInvoiceModel.find({
-        credInvoiceStatus: PAYMENT_STATUS.NOTPAID,
+    const query = {
+      credInvoiceStatus: PAYMENT_STATUS.NOTPAID,
+      credInvoiceDueDate: { $gte: startOfDay, $lte: endOfDay },
+    };
+
+    let invoices = await CredInvoiceModel.find(query)
+      .populate("credInvoicedCreditor")
+      .sort({ credInvoiceDueDate: 1 })
+      .skip(skip)
+      .limit(limit);
+
+    const documentCount = await CredInvoiceModel.countDocuments(query);
+
+    return res.status(httpStatus.OK).json(
+      ApiResponse.response(credInvoice_success_code, success_message, {
+        documentCount,
+        invoices,
       })
-        .populate("credInvoicedCreditor")
-        .sort({ credInvoiceDueDate: 1 })
-        .skip(skip)
-        .limit(limit);
-    } else {
-      const dueDateFrom = new Date();
-      dueDateFrom.setDate(dueDateFrom.getDate() + noOfDays);
-
-      invoices = await CredInvoiceModel.find({
-        credInvoiceStatus: PAYMENT_STATUS.NOTPAID,
-        credInvoiceDueDate: { $lt: dueDateFrom },
-      })
-        .populate("credInvoicedCreditor")
-        .sort({ credInvoiceDueDate: 1 });
-    }
-
-    res
-      .status(httpStatus.OK)
-      .json(
-        ApiResponse.response(
-          credInvoice_success_code,
-          success_message,
-          invoices
-        )
-      );
+    );
   } catch (error) {
     console.log(error);
     return res

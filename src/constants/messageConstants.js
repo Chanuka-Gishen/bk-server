@@ -46,3 +46,7 @@ export const payment_added = "Payment added";
 export const payment_updated = "Payment update";
 export const payment_deleted = "Payment record deleted";
 export const payment_not_found = "Payment record not found";
+
+export const cash_balance_updated = "Opening cash balance updated";
+export const cash_balance_reset = "Opening balance reset successful";
+export const cash_balance_not_found = "Record not found";

@@ -12,6 +12,10 @@ const invoiceRangeSchema = new Schema({
     type: Number,
     required: true,
   },
+  invoiceDesciption: {
+    type: String,
+    default: null,
+  },
   invoiceCreatedAt: {
     type: Date,
     required: true,

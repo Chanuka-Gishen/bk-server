@@ -38,6 +38,8 @@ import { invoiceRangeUpdateSchema } from "../schemas/invoice/invoiceRangeUpdtSch
 import { invoiceCreditorUpdateSchema } from "../schemas/invoice/invoiceCreditorUpdtSchema.js";
 import { INVOICE_TYPES } from "../constants/invoiceTypes.js";
 import { PAYMENT_STATUS } from "../constants/paymentStatus.js";
+import CashBalanceModel from "../models/cashBalanceModel.js";
+import { excelSerialDateToJSDate } from "../services/commonServices.js";
 
 const createInvoice = async (req, res, InvoiceModel, schema, type) => {
   try {
@@ -508,13 +510,11 @@ export const deleteCreditorPaymentController = async (req, res) => {
 export const invoicesBySalesBooksController = async (req, res) => {
   try {
     const { id, type } = req.params;
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const page = parseInt(req.query.page);
+    const limit = parseInt(req.query.limit);
     const date = req.body.filteredDate;
 
-    console.log(date);
-
-    const skip = (page - 1) * limit;
+    const skip = page * limit;
 
     let book;
 
@@ -529,6 +529,7 @@ export const invoicesBySalesBooksController = async (req, res) => {
     }
 
     let invoices;
+    let documentCount;
 
     const pipeline = [
       {
@@ -565,19 +566,22 @@ export const invoicesBySalesBooksController = async (req, res) => {
     switch (type) {
       case INVOICE_TYPES.RANGE:
         invoices = await InvoiceRangeModel.aggregate(pipeline);
+        documentCount = await InvoiceRangeModel.countDocuments();
         break;
       case INVOICE_TYPES.SINGLE:
         invoices = await InvoiceSingleModel.aggregate(pipeline);
+        documentCount = await InvoiceSingleModel.countDocuments();
         break;
       default:
         break;
     }
 
-    return res
-      .status(httpStatus.OK)
-      .json(
-        ApiResponse.response(invoice_success_code, success_message, invoices)
-      );
+    return res.status(httpStatus.OK).json(
+      ApiResponse.response(invoice_success_code, success_message, {
+        documentCount,
+        invoices,
+      })
+    );
   } catch (error) {
     console.log(error);
     return res
@@ -616,7 +620,7 @@ export const getTotalPaymentsFilteredByDateController = async (req, res) => {
     let date;
 
     if (filteredDate) {
-      date = new Date(date);
+      date = new Date(filteredDate);
     } else {
       date = new Date();
     }
@@ -709,16 +713,17 @@ export const totalSalesFilteredByDateController = async (req, res) => {
         break;
     }
 
+    const response = {
+      totalInAmount: result && result.length > 0 ? result[0].totalInAmount : 0,
+      totalOutAmount:
+        result && result.length > 0 ? result[0].totalOutAmount : 0,
+      netAmount: result && result.length > 0 ? result[0].netAmount : 0,
+    };
+
     return res
       .status(httpStatus.OK)
       .json(
-        ApiResponse.response(
-          invoice_success_code,
-          success_message,
-          result && result.length > 0
-            ? result[0]
-            : { totalInAmount: 0, totalOutAmount: 0, netAmount: 0 }
-        )
+        ApiResponse.response(invoice_success_code, success_message, response)
       );
   } catch (error) {
     console.log(error);
@@ -746,46 +751,76 @@ export const addBulkInvoicesForSalesBook = async (req, res) => {
         .json(ApiResponse.error(salesBook_error_code, book_not_found));
     }
 
-    for (const row of rows) {
-      const rowData = row[0].split(/\s+/).map((value) => value.trim());
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      if (row.length > 0) {
+        if (book.bookType === INVOICE_TYPES.RANGE) {
+          const [from, to, description, date, amountIn, amountOut] = row;
 
-      const [from, to, date, amount] = rowData;
+          const invoiceNoFrom = parseInt(from);
+          const invoiceNoTo = parseInt(to);
+          const invoiceInAmount = parseFloat(amountIn ? amountIn : 0);
+          const invoiceOutAmount = parseFloat(amountOut ? amountOut : 0);
 
-      const invoiceNoFrom = parseInt(from);
-      const invoiceNoTo = parseInt(to);
-      const invoiceAmount = parseFloat(amount);
+          const createdDate = excelSerialDateToJSDate(date);
 
-      const properties = [invoiceNoFrom, invoiceNoTo, date, invoiceAmount];
-
-      if (properties.every((value) => value !== null && value !== undefined)) {
-        const existingInvoice = await InvoiceRangeModel.findOne({
-          $and: [
-            {
-              $or: [
-                { invoiceNoFrom: { $gte: from, $lte: to } },
-                { invoiceNoTo: { $gte: from, $lte: to } },
-                {
-                  $and: [
-                    { invoiceNoFrom: { $lte: from } },
-                    { invoiceNoTo: { $gte: to } },
-                  ],
-                },
-              ],
-            },
-            { invoiceSalesBookRef: new ObjectId(book._id) },
-          ],
-        });
-
-        if (!existingInvoice) {
-          const newInvoice = new InvoiceRangeModel({
-            invoiceNoFrom,
-            invoiceNoTo,
-            invoiceAmount,
-            invoiceCreatedAt: new Date(date),
-            invoiceSalesBookRef: new ObjectId(book._id),
+          const existingInvoice = await InvoiceRangeModel.findOne({
+            $and: [
+              {
+                $or: [
+                  { invoiceNoFrom: { $gte: from, $lte: to } },
+                  { invoiceNoTo: { $gte: from, $lte: to } },
+                  {
+                    $and: [
+                      { invoiceNoFrom: { $lte: from } },
+                      { invoiceNoTo: { $gte: to } },
+                    ],
+                  },
+                ],
+              },
+              { invoiceSalesBookRef: new ObjectId(book._id) },
+            ],
           });
 
-          await newInvoice.save();
+          if (!existingInvoice) {
+            const newInvoice = new InvoiceRangeModel({
+              invoiceNoFrom,
+              invoiceNoTo,
+              invoiceDesciption: description,
+              invoiceInAmount,
+              invoiceOutAmount,
+              invoiceCreatedAt: new Date(createdDate),
+              invoiceSalesBookRef: new ObjectId(book._id),
+            });
+
+            await newInvoice.save();
+          }
+        } else if (book.bookType === INVOICE_TYPES.SINGLE) {
+          const [invoice, description, date, amountIn, amountOut] = row;
+
+          const invoiceNo = parseInt(invoice);
+          const invoiceInAmount = parseFloat(amountIn ? amountIn : 0);
+          const invoiceOutAmount = parseFloat(amountOut ? amountOut : 0);
+
+          const createdDate = excelSerialDateToJSDate(date);
+
+          const existingInvoice = await InvoiceSingleModel.findOne({
+            invoiceSalesBookRef: new ObjectId(book._id),
+            invoiceNo: invoiceNo,
+          });
+
+          if (!existingInvoice) {
+            const newInvoice = new InvoiceSingleModel({
+              invoiceNo,
+              invoiceDesciption: description,
+              invoiceInAmount,
+              invoiceOutAmount,
+              invoiceCreatedAt: new Date(createdDate),
+              invoiceSalesBookRef: new ObjectId(book._id),
+            });
+
+            await newInvoice.save();
+          }
         }
       }
     }

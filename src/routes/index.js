@@ -6,6 +6,7 @@ import creditorRoutes from "./creditorRoutes.js";
 import credInvoiceRoutes from "./credInvoiceRoutes.js";
 import invoiceRoutes from "./invoiceRoutes.js";
 import paymentRoutes from "./paymentRoutes.js";
+import cashBalanceRoutes from "./cashBalanceRoutes.js";
 
 const router = express.Router();
 
@@ -16,5 +17,6 @@ router.use("/creditor", creditorRoutes);
 router.use("/credInvoice", credInvoiceRoutes);
 router.use("/invoice", invoiceRoutes);
 router.use("/payment", paymentRoutes);
+router.use("/balance", cashBalanceRoutes);
 
 export default router;

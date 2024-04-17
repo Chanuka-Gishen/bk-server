@@ -39,3 +39,8 @@ export const payment_success_code = "PAYM-001";
 export const payment_info_code = "PAYM-002";
 export const payment_warning_code = "PAYM-003";
 export const payment_error_code = "PAYM-004";
+
+export const openingBalance_success_code = "CASH-001";
+export const openingBalance_info_code = "CASH-002";
+export const openingBalance_warning_code = "CASH-003";
+export const openingBalance_error_code = "CASH-004";

@@ -5,6 +5,7 @@ import { authorize } from "../auth/authorize.js";
 import {
   createSalesBookController,
   getSalesBooksController,
+  getTotalCashBalanceController,
   updateSalesBookController,
 } from "../controllers/salesBookController.js";
 import { ADMIN_ROLE, MANAGER_ROLE } from "../constants/employeeRoles.js";
@@ -21,6 +22,11 @@ salesBookRoutes.put(
   "/update",
   [verifyToken, authorize([ADMIN_ROLE, MANAGER_ROLE])],
   updateSalesBookController
+);
+salesBookRoutes.get(
+  "/cash-balance",
+  [verifyToken],
+  getTotalCashBalanceController
 );
 
 export default salesBookRoutes;
