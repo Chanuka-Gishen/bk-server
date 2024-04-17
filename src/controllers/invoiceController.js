@@ -38,7 +38,6 @@ import { invoiceRangeUpdateSchema } from "../schemas/invoice/invoiceRangeUpdtSch
 import { invoiceCreditorUpdateSchema } from "../schemas/invoice/invoiceCreditorUpdtSchema.js";
 import { INVOICE_TYPES } from "../constants/invoiceTypes.js";
 import { PAYMENT_STATUS } from "../constants/paymentStatus.js";
-import CashBalanceModel from "../models/cashBalanceModel.js";
 import { excelSerialDateToJSDate } from "../services/commonServices.js";
 
 const createInvoice = async (req, res, InvoiceModel, schema, type) => {

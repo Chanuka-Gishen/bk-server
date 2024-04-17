@@ -12,7 +12,7 @@ const invoiceRangeSchema = new Schema({
     type: Number,
     required: true,
   },
-  invoiceDesciption: {
+  invoiceDescription: {
     type: String,
     default: null,
   },
