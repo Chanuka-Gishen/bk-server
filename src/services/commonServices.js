@@ -1,3 +1,5 @@
+import { format } from 'date-fns';
+
 export const createRandomPassword = () => {
   const charset =
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -21,4 +23,21 @@ export const excelSerialDateToJSDate = (serialDate) => {
 
   // Create and return a new Date object from the milliseconds
   return new Date(millisecondsSinceEpoch);
+};
+
+export const formatCurrency = (amount) => {
+  const formattedAmount = amount
+    .toLocaleString("en-IN", {
+      style: "currency",
+      currency: "LKR",
+      minimumFractionDigits: 2,
+    })
+    .replace("LKR", "Rs.");
+  return formattedAmount;
+};
+
+export const fDate = (date, newFormat) => {
+  const fm = newFormat || "dd MMM yyyy";
+
+  return date ? format(new Date(date), fm) : "-";
 };

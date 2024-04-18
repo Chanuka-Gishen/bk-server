@@ -1,5 +1,6 @@
 import httpStatus from "http-status";
 import { ObjectId } from "mongodb";
+import PDFDocument from "pdfkit";
 
 import ApiResponse from "../services/ApiResponse.js";
 import {
@@ -18,6 +19,11 @@ import { createSequence, updateSequence } from "./sequenceController.js";
 import { salesBookUpdateSchema } from "../schemas/salesBookUpdateSchema.js";
 import { calculateNetAmount } from "./cashBalanceController.js";
 import CashBalanceModel from "../models/cashBalanceModel.js";
+import InvoiceSingleModel from "../models/invoiceSingleModel.js";
+import InvoiceRangeModel from "../models/invoiceRangeModel.js";
+import InvoiceCreditorModel from "../models/invoiceCreditorModel.js";
+import { fDate } from "../services/commonServices.js";
+import { generateInvoiceSummaryPDF } from "../services/pdfServices.js";
 
 // Create new sales book
 export const createSalesBookController = async (req, res) => {
@@ -168,6 +174,145 @@ export const getTotalCashBalanceController = async (req, res) => {
       .json(
         ApiResponse.response(salesBook_success_code, success_message, response)
       );
+  } catch (error) {
+    console.log(error);
+    return res
+      .status(httpStatus.BAD_REQUEST)
+      .json(ApiResponse.error(bad_request_code, error.message));
+  }
+};
+
+// Download invoices report
+export const downloadInvoicesReportController = async (req, res) => {
+  try {
+    const date = req.query.date;
+
+    const filteredDate = new Date(date);
+    const startDate = new Date(filteredDate.setHours(0, 0, 0, 0));
+    const endDate = new Date(filteredDate.setHours(23, 59, 59, 999));
+
+    const query = {
+      invoiceCreatedAt: {
+        $gte: startDate,
+        $lte: endDate,
+      },
+    };
+
+    const openingBalanceResult = await CashBalanceModel.findOne({
+      cashBalanceDate: { $gte: startDate, $lte: endDate },
+    });
+
+    const singleInvoices = await InvoiceSingleModel.find(query);
+
+    const singleResultTotalIn = singleInvoices.reduce(
+      (acc, invoice) => acc + invoice.invoiceInAmount,
+      0
+    );
+    const singleResultTotalOut = singleInvoices.reduce(
+      (acc, invoice) => acc + invoice.invoiceOutAmount,
+      0
+    );
+
+    const rangeInvoices = await InvoiceRangeModel.find(query);
+
+    const rangeResultTotalIn = rangeInvoices.reduce(
+      (acc, invoice) => acc + invoice.invoiceInAmount,
+      0
+    );
+    const rangeResultTotalOut = rangeInvoices.reduce(
+      (acc, invoice) => acc + invoice.invoiceOutAmount,
+      0
+    );
+
+    const credInvoices = await InvoiceCreditorModel.find(query)
+      .populate("invoiceCreditorRef")
+      .populate("invoiceCreditorInvoiceRef");
+
+    const credInvoicesTotal = credInvoices.reduce(
+      (acc, invoice) => acc + invoice.invoiceAmount,
+      0
+    );
+
+    const salesBooksAndInvoices = await SalesBookModel.aggregate([
+      {
+        $lookup: {
+          from: "rangeinvoices",
+          localField: "_id",
+          foreignField: "invoiceSalesBookRef",
+          pipeline: [
+            {
+              $match: {
+                invoiceCreatedAt: {
+                  $gte: startDate,
+                  $lte: endDate,
+                },
+              },
+            },
+          ],
+          as: "rangeinvoices",
+        },
+      },
+      {
+        $lookup: {
+          from: "singleinvoices",
+          localField: "_id",
+          foreignField: "invoiceSalesBookRef",
+          pipeline: [
+            {
+              $match: {
+                invoiceCreatedAt: {
+                  $gte: startDate,
+                  $lte: endDate,
+                },
+              },
+            },
+          ],
+          as: "singleinvoices",
+        },
+      },
+    ]);
+
+    const totalInvoicesAmountIn =
+      (rangeResultTotalIn ? rangeResultTotalIn : 0) +
+      (singleResultTotalIn ? singleResultTotalIn : 0);
+
+    const totalInvoicesAmountOut =
+      (rangeResultTotalOut ? rangeResultTotalOut : 0) +
+      (singleResultTotalOut ? singleResultTotalOut : 0);
+
+    const totalInvoicesAmount = totalInvoicesAmountIn - totalInvoicesAmountOut;
+
+    const totalWithCredPayments = totalInvoicesAmount + credInvoicesTotal;
+
+    const grossTotal = openingBalanceResult
+      ? openingBalanceResult.openingBalance
+      : 0 + totalWithCredPayments;
+
+    // Create a new PDF document
+    const doc = new PDFDocument({ bufferPages: true, size: "A4", margin: 50 });
+
+    // Set response headers
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename=${fDate(filteredDate)}-report.pdf`
+    );
+
+    // Stream the PDF buffer to the response
+    doc.pipe(res);
+
+    generateInvoiceSummaryPDF(
+      doc,
+      filteredDate,
+      openingBalanceResult ? openingBalanceResult.openingBalance : 0,
+      totalInvoicesAmount,
+      credInvoicesTotal,
+      grossTotal,
+      salesBooksAndInvoices,
+      credInvoices
+    );
+
+    doc.end();
   } catch (error) {
     console.log(error);
     return res

@@ -4,6 +4,7 @@ import { verifyToken } from "../auth/auth.js";
 import { authorize } from "../auth/authorize.js";
 import {
   createSalesBookController,
+  downloadInvoicesReportController,
   getSalesBooksController,
   getTotalCashBalanceController,
   updateSalesBookController,
@@ -28,5 +29,6 @@ salesBookRoutes.get(
   [verifyToken],
   getTotalCashBalanceController
 );
+salesBookRoutes.get("/download-summary", downloadInvoicesReportController);
 
 export default salesBookRoutes;
