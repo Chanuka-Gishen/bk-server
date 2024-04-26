@@ -56,6 +56,7 @@ export const addCredInvoiceController = async (req, res) => {
       credInvoiceNo,
       credInvoiceDate,
       credInvoiceAmount,
+      credInvoiceBalance: credInvoiceAmount,
       credInvoiceDueDate,
       credInvoicedCreditor: creditor._id,
     });
