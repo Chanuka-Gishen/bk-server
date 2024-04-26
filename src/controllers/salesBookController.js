@@ -237,14 +237,16 @@ export const downloadInvoicesReportController = async (req, res) => {
       {
         $lookup: {
           from: "rangeinvoices",
-          localField: "_id",
-          foreignField: "invoiceSalesBookRef",
+          let: { salesBookId: "$_id" },
           pipeline: [
             {
               $match: {
-                invoiceCreatedAt: {
-                  $gte: startDate,
-                  $lte: endDate,
+                $expr: {
+                  $and: [
+                    { $eq: ["$invoiceSalesBookRef", "$$salesBookId"] },
+                    { $gte: ["$invoiceCreatedAt", startDate] },
+                    { $lte: ["$invoiceCreatedAt", endDate] },
+                  ],
                 },
               },
             },
@@ -255,14 +257,16 @@ export const downloadInvoicesReportController = async (req, res) => {
       {
         $lookup: {
           from: "singleinvoices",
-          localField: "_id",
-          foreignField: "invoiceSalesBookRef",
+          let: { salesBookId: "$_id" },
           pipeline: [
             {
               $match: {
-                invoiceCreatedAt: {
-                  $gte: startDate,
-                  $lte: endDate,
+                $expr: {
+                  $and: [
+                    { $eq: ["$invoiceSalesBookRef", "$$salesBookId"] },
+                    { $gte: ["$invoiceCreatedAt", startDate] },
+                    { $lte: ["$invoiceCreatedAt", endDate] },
+                  ],
                 },
               },
             },
@@ -285,7 +289,7 @@ export const downloadInvoicesReportController = async (req, res) => {
     const totalWithCredPayments = totalInvoicesAmount + credInvoicesTotal;
 
     const grossTotal = openingBalanceResult
-      ? openingBalanceResult.openingBalance
+      ? openingBalanceResult.openingBalance + totalWithCredPayments
       : 0 + totalWithCredPayments;
 
     // Create a new PDF document
