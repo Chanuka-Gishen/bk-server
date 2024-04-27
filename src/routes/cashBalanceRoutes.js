@@ -4,6 +4,7 @@ import { verifyToken } from "../auth/auth.js";
 import { authorize } from "../auth/authorize.js";
 import {
   GetOpeningBalance,
+  addCashBalanceController,
   getTodayOpeningCashBalanceController,
   resetOpeningCashBalanceController,
   updateOpeningBalanceController,
@@ -12,6 +13,11 @@ import { ADMIN_ROLE, MANAGER_ROLE } from "../constants/employeeRoles.js";
 
 const cashBalanceRoutes = express.Router();
 
+cashBalanceRoutes.post(
+  "/add",
+  [verifyToken, authorize([ADMIN_ROLE, MANAGER_ROLE])],
+  addCashBalanceController
+);
 cashBalanceRoutes.get("/recent", [verifyToken], GetOpeningBalance);
 cashBalanceRoutes.get(
   "/today",

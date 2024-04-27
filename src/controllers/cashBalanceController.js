@@ -12,12 +12,104 @@ import InvoiceRangeModel from "../models/invoiceRangeModel.js";
 import InvoiceSingleModel from "../models/invoiceSingleModel.js";
 import InvoiceCreditorModel from "../models/invoiceCreditorModel.js";
 import {
+  cash_balance_exists,
   cash_balance_not_found,
   cash_balance_reset,
   cash_balance_updated,
   success_message,
 } from "../constants/messageConstants.js";
 import { cashBalanceUpdateSchema } from "../schemas/cashBalance/cashBalanceUpdateSchema.js";
+import { cashBalanceAddSchema } from "../schemas/cashBalance/cashBalanceAddSchema.js";
+
+// Add cash balance manually
+export const addCashBalanceController = async (req, res) => {
+  try {
+    const { error, value } = cashBalanceAddSchema.validate(req.body);
+
+    if (error) {
+      return res
+        .status(httpStatus.BAD_REQUEST)
+        .json(ApiResponse.error(bad_request_code, error.message));
+    }
+
+    const { cashBalanceDate, openingBalance } = value;
+
+    const today = new Date(cashBalanceDate);
+    const startOfDay = new Date(today);
+    startOfDay.setHours(0, 0, 0, 0); // Set start of the day
+
+    const endOfDay = new Date(today);
+    endOfDay.setHours(23, 59, 59, 999); // Set end of the day
+
+    const cashBalance = await CashBalanceModel.findOne({
+      cashBalanceDate: { $gte: startOfDay, $lte: endOfDay },
+    });
+
+    if (cashBalance) {
+      return res
+        .status(httpStatus.BAD_REQUEST)
+        .json(
+          ApiResponse.error(openingBalance_error_code, cash_balance_exists)
+        );
+    }
+
+    const newOpeningBalance = new CashBalanceModel({
+      cashBalanceDate: today,
+      openingBalance: openingBalance,
+    });
+
+    await newOpeningBalance.save();
+
+    return res
+      .status(httpStatus.CREATED)
+      .json(ApiResponse.response(openingBalance_success_code, success_message));
+  } catch (error) {
+    console.log(error);
+    return res
+      .status(httpStatus.BAD_REQUEST)
+      .json(ApiResponse.error(bad_request_code, error.message));
+  }
+};
+
+// Update today opening cash balance
+export const updateOpeningBalanceController = async (req, res) => {
+  try {
+    const { error, value } = cashBalanceUpdateSchema.validate(req.body);
+
+    if (error) {
+      return res
+        .status(httpStatus.BAD_REQUEST)
+        .json(ApiResponse.error(bad_request_code, error.message));
+    }
+
+    const { id, openingBalance } = value;
+
+    const result = await CashBalanceModel.findById(new ObjectId(id));
+
+    if (!result) {
+      return res
+        .status(httpStatus.BAD_REQUEST)
+        .json(
+          ApiResponse.error(openingBalance_error_code, cash_balance_not_found)
+        );
+    }
+
+    result.openingBalance = openingBalance;
+
+    await result.save();
+
+    return res
+      .status(httpStatus.OK)
+      .json(
+        ApiResponse.response(openingBalance_success_code, cash_balance_updated)
+      );
+  } catch (error) {
+    console.log(error);
+    return res
+      .status(httpStatus.BAD_REQUEST)
+      .json(ApiResponse.error(bad_request_code, error.message));
+  }
+};
 
 // Get cash opening balance - 7 days
 export const GetOpeningBalance = async (req, res) => {
@@ -34,7 +126,6 @@ export const GetOpeningBalance = async (req, res) => {
     });
 
     if (!cashBalance) {
-      console.log("Not found");
       const today = new Date();
 
       const totalNetAmount = await calculateNetAmount(
@@ -124,46 +215,6 @@ export const getTodayOpeningCashBalanceController = async (req, res) => {
   }
 };
 
-// Update today opening cash balance
-export const updateOpeningBalanceController = async (req, res) => {
-  try {
-    const { error, value } = cashBalanceUpdateSchema.validate(req.body);
-
-    if (error) {
-      return res
-        .status(httpStatus.BAD_REQUEST)
-        .json(ApiResponse.error(bad_request_code, error.message));
-    }
-
-    const { id, openingBalance } = value;
-
-    const result = await CashBalanceModel.findById(new ObjectId(id));
-
-    if (!result) {
-      return res
-        .status(httpStatus.BAD_REQUEST)
-        .json(
-          ApiResponse.error(openingBalance_error_code, cash_balance_not_found)
-        );
-    }
-
-    result.openingBalance = openingBalance;
-
-    await result.save();
-
-    return res
-      .status(httpStatus.OK)
-      .json(
-        ApiResponse.response(openingBalance_success_code, cash_balance_updated)
-      );
-  } catch (error) {
-    console.log(error);
-    return res
-      .status(httpStatus.BAD_REQUEST)
-      .json(ApiResponse.error(bad_request_code, error.message));
-  }
-};
-
 export const resetOpeningCashBalanceController = async (req, res) => {
   try {
     const { id } = req.params;
@@ -178,12 +229,24 @@ export const resetOpeningCashBalanceController = async (req, res) => {
         );
     }
 
-    const today = new Date();
-    const netAmount = await calculateNetAmount(
-      new Date(today.setDate(today.getDate() - 1))
-    );
+    const date = new Date(record.cashBalanceDate);
+    const dayBefore = new Date(date.setDate(date.getDate() - 1));
 
-    record.openingBalance = netAmount;
+    const startOfDay = new Date(dayBefore);
+    startOfDay.setHours(0, 0, 0, 0); // Set start of the day
+
+    const endOfDay = new Date(dayBefore);
+    endOfDay.setHours(23, 59, 59, 999); // Set end of the day
+
+    const openingBalance = await CashBalanceModel.findOne({
+      cashBalanceDate: { $gte: startOfDay, $lte: endOfDay },
+    });
+
+    const netAmount = await calculateNetAmount(dayBefore);
+
+    const balance = openingBalance ? openingBalance.openingBalance : 0;
+
+    record.openingBalance = netAmount + balance;
 
     await record.save();
 
