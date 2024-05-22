@@ -8,6 +8,7 @@ import {
   PaymentDeleteController,
   PaymentUpdateController,
   PaymentsGetController,
+  getTotalPaymentInvoiceAmount,
 } from "../controllers/paymentController.js";
 
 const paymentRoutes = express.Router();
@@ -27,6 +28,7 @@ paymentRoutes.delete(
   [verifyToken, authorize([ADMIN_ROLE])],
   PaymentDeleteController
 );
-paymentRoutes.get("/invoices", [verifyToken], PaymentsGetController);
+paymentRoutes.post("/invoices", [verifyToken], PaymentsGetController);
+paymentRoutes.post("/total", [verifyToken], getTotalPaymentInvoiceAmount);
 
 export default paymentRoutes;

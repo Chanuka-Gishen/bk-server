@@ -2,9 +2,10 @@ import httpStatus from "http-status";
 import { ObjectId } from "mongodb";
 
 import PaymentModel from "../models/paymentsModel.js";
-import { paymentAddSchema } from "../schemas/paymentAddSchema.js";
+
 import ApiResponse from "../services/ApiResponse.js";
 import {
+  invoice_success_code,
   payment_error_code,
   payment_success_code,
 } from "../constants/statusCodes.js";
@@ -15,7 +16,8 @@ import {
   payment_updated,
   success_message,
 } from "../constants/messageConstants.js";
-import { paymentUpdateSchema } from "../schemas/paymentUpdateSchema.js";
+import { paymentAddSchema } from "../schemas/payments/paymentAddSchema.js";
+import { paymentUpdateSchema } from "../schemas/payments/paymentUpdateSchema.js";
 
 // Add payment
 export const PaymentAddController = async (req, res) => {
@@ -116,12 +118,88 @@ export const PaymentDeleteController = async (req, res) => {
 // Get all payment records
 export const PaymentsGetController = async (req, res) => {
   try {
-    const invoices = await PaymentModel.find().sort({ paymentDate: 1 });
+    const page = parseInt(req.query.page);
+    const limit = parseInt(req.query.limit);
+    const date = req.body.filteredDate;
+
+    const skip = page * limit;
+
+    let query = {};
+
+    if (date) {
+      const filterDate = new Date(date);
+      const startOfDay = new Date(filterDate.setHours(0, 0, 0, 0));
+      const endOfDay = new Date(filterDate.setHours(23, 59, 59, 999));
+
+      query = {
+        paymentDate: {
+          $gte: startOfDay,
+          $lte: endOfDay,
+        },
+      };
+    }
+
+    const invoices = await PaymentModel.find(query)
+      .sort({ paymentDate: 1 })
+      .skip(skip)
+      .limit(limit);
+    const documentCount = await PaymentModel.countDocuments(query);
+
+    return res.status(httpStatus.OK).json(
+      ApiResponse.response(payment_success_code, success_message, {
+        invoices,
+        documentCount,
+      })
+    );
+  } catch (error) {
+    console.log(error);
+    return res
+      .status(httpStatus.BAD_REQUEST)
+      .json(ApiResponse.error(bad_request_code, error.message));
+  }
+};
+
+// Get total amount of payments filtered by date
+export const getTotalPaymentInvoiceAmount = async (req, res) => {
+  try {
+    const filteredDate = req.body.filteredDate;
+
+    let date;
+
+    if (filteredDate) {
+      date = new Date(filteredDate);
+    } else {
+      date = new Date();
+    }
+
+    const startOfDay = new Date(date.setHours(0, 0, 0, 0));
+    const endOfDay = new Date(date.setHours(23, 59, 59, 999));
+
+    const totalAmount = await PaymentModel.aggregate([
+      {
+        $match: {
+          paymentDate: {
+            $gte: startOfDay,
+            $lte: endOfDay,
+          },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$paymentAmount" }, // Calculate sum of the invoiceAmount field
+        },
+      },
+    ]);
 
     return res
       .status(httpStatus.OK)
       .json(
-        ApiResponse.response(payment_success_code, success_message, invoices)
+        ApiResponse.response(
+          invoice_success_code,
+          success_message,
+          totalAmount.length > 0 ? totalAmount[0].total : 0
+        )
       );
   } catch (error) {
     console.log(error);

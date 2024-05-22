@@ -589,6 +589,53 @@ export const invoicesBySalesBooksController = async (req, res) => {
   }
 };
 
+// Get creditor payments - all - Filter by date
+export const getAllCreditorPayment = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page);
+    const limit = parseInt(req.query.limit);
+    const date = req.body.filteredDate;
+
+    const skip = page * limit;
+
+    let query = {};
+
+    if (date) {
+      const filterDate = new Date(date);
+      const startOfDay = new Date(filterDate.setHours(0, 0, 0, 0));
+      const endOfDay = new Date(filterDate.setHours(23, 59, 59, 999));
+
+      query = {
+        invoiceCreatedAt: {
+          $gte: startOfDay,
+          $lte: endOfDay,
+        },
+      };
+    }
+
+    const invoices = await InvoiceCreditorModel.find(query)
+      .populate("invoiceCreditorRef")
+      .populate("invoiceCreditorInvoiceRef")
+      .sort({ invoiceCreatedAt: 1 })
+      .skip(skip)
+      .limit(limit);
+
+    const documentCount = await InvoiceCreditorModel.countDocuments();
+
+    return res.status(httpStatus.OK).json(
+      ApiResponse.response(invoice_success_code, success_message, {
+        documentCount,
+        invoices,
+      })
+    );
+  } catch (error) {
+    console.log(error);
+    return res
+      .status(httpStatus.BAD_REQUEST)
+      .json(ApiResponse.error(bad_request_code, error.message));
+  }
+};
+
 // Get creditor payments invoices - credInvoice ID
 export const getCreditorPaymentsInvoices = async (req, res) => {
   try {
