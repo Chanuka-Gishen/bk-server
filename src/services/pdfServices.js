@@ -149,8 +149,7 @@ export const generateInvoiceSummaryPDF = (
               150,
               y
             )
-            .text(formatCurrency(invoice.invoiceInAmount), 350, y)
-            .text(formatCurrency(invoice.invoiceOutAmount), 470, y);
+            .text(formatCurrency(invoice.invoiceAmount), 470, y);
 
           incrementYAndCheck();
         });
@@ -200,8 +199,7 @@ export const generateInvoiceSummaryPDF = (
               150,
               y
             )
-            .text(formatCurrency(invoice.invoiceInAmount), 350, y)
-            .text(formatCurrency(invoice.invoiceOutAmount), 470, y);
+            .text(formatCurrency(invoice.invoiceAmount), 470, y);
 
           incrementYAndCheck();
         });

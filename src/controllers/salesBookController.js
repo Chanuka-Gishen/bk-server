@@ -24,6 +24,7 @@ import InvoiceRangeModel from "../models/invoiceRangeModel.js";
 import InvoiceCreditorModel from "../models/invoiceCreditorModel.js";
 import { fDate } from "../services/commonServices.js";
 import { generateInvoiceSummaryPDF } from "../services/pdfServices.js";
+import PaymentModel from "../models/paymentsModel.js";
 
 // Create new sales book
 export const createSalesBookController = async (req, res) => {
@@ -152,7 +153,65 @@ export const getSalesBooksController = async (req, res) => {
   }
 };
 
-// Get total cash balance today
+// Get total salesbooks cash balance - filtered by date
+export const getTotalSalesBooksCashBalanceController = async (req, res) => {
+  try {
+    const filteredDate = req.body.filteredDate;
+
+    let date;
+
+    if (filteredDate) {
+      date = new Date(filteredDate);
+    } else {
+      date = new Date();
+    }
+
+    const startDate = new Date(date.setHours(0, 0, 0, 0));
+    const endDate = new Date(date.setHours(23, 59, 59, 999));
+
+    const query = {
+      invoiceCreatedAt: {
+        $gte: startDate,
+        $lte: endDate,
+      },
+    };
+
+    const singleInvoices = await InvoiceSingleModel.find(query);
+
+    const singleResultTotal = singleInvoices.reduce(
+      (acc, invoice) => acc + invoice.invoiceAmount,
+      0
+    );
+
+    const rangeInvoices = await InvoiceRangeModel.find(query);
+
+    const rangeResultTotal = rangeInvoices.reduce(
+      (acc, invoice) => acc + invoice.invoiceAmount,
+      0
+    );
+
+    const totalInvoicesAmount =
+      (rangeResultTotal ? rangeResultTotal : 0) +
+      (singleResultTotal ? singleResultTotal : 0);
+
+    return res
+      .status(httpStatus.OK)
+      .json(
+        ApiResponse.response(
+          salesBook_success_code,
+          success_message,
+          totalInvoicesAmount
+        )
+      );
+  } catch (error) {
+    console.log(error);
+    return res
+      .status(httpStatus.BAD_REQUEST)
+      .json(ApiResponse.error(bad_request_code, error.message));
+  }
+};
+
+// Get total balance today
 export const getTotalCashBalanceController = async (req, res) => {
   try {
     const currentDate = new Date();
@@ -198,29 +257,35 @@ export const downloadInvoicesReportController = async (req, res) => {
       },
     };
 
+    const queryPayment = {
+      paymentDate: {
+        $gte: startDate,
+        $lte: endDate,
+      },
+    };
+
     const openingBalanceResult = await CashBalanceModel.findOne({
       cashBalanceDate: { $gte: startDate, $lte: endDate },
     });
 
     const singleInvoices = await InvoiceSingleModel.find(query);
 
-    const singleResultTotalIn = singleInvoices.reduce(
-      (acc, invoice) => acc + invoice.invoiceInAmount,
-      0
-    );
-    const singleResultTotalOut = singleInvoices.reduce(
-      (acc, invoice) => acc + invoice.invoiceOutAmount,
+    const singleResultTotal = singleInvoices.reduce(
+      (acc, invoice) => acc + invoice.invoiceAmount,
       0
     );
 
     const rangeInvoices = await InvoiceRangeModel.find(query);
 
-    const rangeResultTotalIn = rangeInvoices.reduce(
-      (acc, invoice) => acc + invoice.invoiceInAmount,
+    const rangeResultTotal = rangeInvoices.reduce(
+      (acc, invoice) => acc + invoice.invoiceAmount,
       0
     );
-    const rangeResultTotalOut = rangeInvoices.reduce(
-      (acc, invoice) => acc + invoice.invoiceOutAmount,
+
+    const paymentInvoices = await PaymentModel.find(queryPayment);
+
+    const totalPayments = paymentInvoices.reduce(
+      (acc, invoice) => acc + invoice.paymentAmount,
       0
     );
 
@@ -277,14 +342,10 @@ export const downloadInvoicesReportController = async (req, res) => {
     ]);
 
     const totalInvoicesAmountIn =
-      (rangeResultTotalIn ? rangeResultTotalIn : 0) +
-      (singleResultTotalIn ? singleResultTotalIn : 0);
+      (rangeResultTotal ? rangeResultTotal : 0) +
+      (singleResultTotal ? singleResultTotal : 0);
 
-    const totalInvoicesAmountOut =
-      (rangeResultTotalOut ? rangeResultTotalOut : 0) +
-      (singleResultTotalOut ? singleResultTotalOut : 0);
-
-    const totalInvoicesAmount = totalInvoicesAmountIn - totalInvoicesAmountOut;
+    const totalInvoicesAmount = totalInvoicesAmountIn - totalPayments;
 
     const totalWithCredPayments = totalInvoicesAmount + credInvoicesTotal;
 

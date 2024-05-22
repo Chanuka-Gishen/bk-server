@@ -21,11 +21,7 @@ const invoiceSingleSchema = new Schema({
     ref: "SalesBook",
     required: true,
   },
-  invoiceInAmount: {
-    type: Number,
-    required: true,
-  },
-  invoiceOutAmount: {
+  invoiceAmount: {
     type: Number,
     required: true,
   },
