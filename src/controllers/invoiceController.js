@@ -40,6 +40,7 @@ import { INVOICE_TYPES } from "../constants/invoiceTypes.js";
 import { PAYMENT_STATUS } from "../constants/paymentStatus.js";
 import { excelSerialDateToJSDate } from "../services/commonServices.js";
 
+// Create invoices Range and Single numbers
 const createInvoice = async (req, res, InvoiceModel, schema, type) => {
   try {
     const { error, value } = schema.validate(req.body);
@@ -165,18 +166,18 @@ export const createInvoiceCreditorController = async (req, res) => {
         .json(ApiResponse.error(invoice_error_code, credInvoice_not_found));
     }
 
-    const existingInvoice = await InvoiceCreditorModel.findOne({
-      invoiceCreditorRef: new ObjectId(
-        existingCreditorInvoice.credInvoicedCreditor
-      ),
-      invoiceNo: invoiceNo,
-    });
+    // const existingInvoice = await InvoiceCreditorModel.findOne({
+    //   invoiceCreditorRef: new ObjectId(
+    //     existingCreditorInvoice.credInvoicedCreditor
+    //   ),
+    //   invoiceNo: invoiceNo,
+    // });
 
-    if (existingInvoice) {
-      return res
-        .status(httpStatus.PRECONDITION_FAILED)
-        .json(ApiResponse.error(invoice_error_code, invoice_exists));
-    }
+    // if (existingInvoice) {
+    //   return res
+    //     .status(httpStatus.PRECONDITION_FAILED)
+    //     .json(ApiResponse.error(invoice_error_code, invoice_exists));
+    // }
 
     if (
       parseFloat(existingCreditorInvoice.credInvoiceBalance) <
@@ -589,6 +590,53 @@ export const invoicesBySalesBooksController = async (req, res) => {
   }
 };
 
+// Get creditor payments - all - Filter by date
+export const getAllCreditorPayment = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page);
+    const limit = parseInt(req.query.limit);
+    const date = req.body.filteredDate;
+
+    const skip = page * limit;
+
+    let query = {};
+
+    if (date) {
+      const filterDate = new Date(date);
+      const startOfDay = new Date(filterDate.setHours(0, 0, 0, 0));
+      const endOfDay = new Date(filterDate.setHours(23, 59, 59, 999));
+
+      query = {
+        invoiceCreatedAt: {
+          $gte: startOfDay,
+          $lte: endOfDay,
+        },
+      };
+    }
+
+    const invoices = await InvoiceCreditorModel.find(query)
+      .populate("invoiceCreditorRef")
+      .populate("invoiceCreditorInvoiceRef")
+      .sort({ invoiceCreatedAt: 1 })
+      .skip(skip)
+      .limit(limit);
+
+    const documentCount = await InvoiceCreditorModel.countDocuments();
+
+    return res.status(httpStatus.OK).json(
+      ApiResponse.response(invoice_success_code, success_message, {
+        documentCount,
+        invoices,
+      })
+    );
+  } catch (error) {
+    console.log(error);
+    return res
+      .status(httpStatus.BAD_REQUEST)
+      .json(ApiResponse.error(bad_request_code, error.message));
+  }
+};
+
 // Get creditor payments invoices - credInvoice ID
 export const getCreditorPaymentsInvoices = async (req, res) => {
   try {
@@ -686,16 +734,13 @@ export const totalSalesFilteredByDateController = async (req, res) => {
       {
         $group: {
           _id: null,
-          totalInAmount: { $sum: "$invoiceInAmount" },
-          totalOutAmount: { $sum: "$invoiceOutAmount" },
+          totalAmount: { $sum: "$invoiceAmount" },
         },
       },
       {
         $project: {
           _id: 0,
-          totalInAmount: 1,
-          totalOutAmount: 1,
-          netAmount: { $subtract: ["$totalInAmount", "$totalOutAmount"] }, // Calculate net in-out value
+          totalAmount: 1,
         },
       },
     ];
@@ -713,10 +758,7 @@ export const totalSalesFilteredByDateController = async (req, res) => {
     }
 
     const response = {
-      totalInAmount: result && result.length > 0 ? result[0].totalInAmount : 0,
-      totalOutAmount:
-        result && result.length > 0 ? result[0].totalOutAmount : 0,
-      netAmount: result && result.length > 0 ? result[0].netAmount : 0,
+      totalAmount: result && result.length > 0 ? result[0].totalAmount : 0,
     };
 
     return res
@@ -754,12 +796,11 @@ export const addBulkInvoicesForSalesBook = async (req, res) => {
       const row = rows[i];
       if (row.length > 0) {
         if (book.bookType === INVOICE_TYPES.RANGE) {
-          const [from, to, description, date, amountIn, amountOut] = row;
+          const [from, to, description, date, amount] = row;
 
           const invoiceNoFrom = parseInt(from);
           const invoiceNoTo = parseInt(to);
-          const invoiceInAmount = parseFloat(amountIn ? amountIn : 0);
-          const invoiceOutAmount = parseFloat(amountOut ? amountOut : 0);
+          const invoiceAmount = parseFloat(amountIn ? amountIn : 0);
 
           const createdDate = excelSerialDateToJSDate(date);
 
@@ -786,8 +827,7 @@ export const addBulkInvoicesForSalesBook = async (req, res) => {
               invoiceNoFrom,
               invoiceNoTo,
               invoiceDesciption: description,
-              invoiceInAmount,
-              invoiceOutAmount,
+              invoiceAmount,
               invoiceCreatedAt: new Date(createdDate),
               invoiceSalesBookRef: new ObjectId(book._id),
             });
@@ -795,11 +835,10 @@ export const addBulkInvoicesForSalesBook = async (req, res) => {
             await newInvoice.save();
           }
         } else if (book.bookType === INVOICE_TYPES.SINGLE) {
-          const [invoice, description, date, amountIn, amountOut] = row;
+          const [invoice, description, date, amountIn, amount] = row;
 
           const invoiceNo = parseInt(invoice);
-          const invoiceInAmount = parseFloat(amountIn ? amountIn : 0);
-          const invoiceOutAmount = parseFloat(amountOut ? amountOut : 0);
+          const invoiceAmount = parseFloat(amount ? amount : 0);
 
           const createdDate = excelSerialDateToJSDate(date);
 
@@ -812,8 +851,7 @@ export const addBulkInvoicesForSalesBook = async (req, res) => {
             const newInvoice = new InvoiceSingleModel({
               invoiceNo,
               invoiceDesciption: description,
-              invoiceInAmount,
-              invoiceOutAmount,
+              invoiceAmount,
               invoiceCreatedAt: new Date(createdDate),
               invoiceSalesBookRef: new ObjectId(book._id),
             });
@@ -833,4 +871,31 @@ export const addBulkInvoicesForSalesBook = async (req, res) => {
       .status(httpStatus.BAD_REQUEST)
       .json(ApiResponse.error(bad_request_code, error.message));
   }
+};
+
+export const updateInvoiceModels = async () => {
+  const updateResultRange = await InvoiceRangeModel.updateMany({}, [
+    {
+      $set: {
+        invoiceAmount: "$invoiceInAmount",
+      },
+    },
+    {
+      $unset: ["invoiceInAmount", "invoiceOutAmount"],
+    },
+  ]);
+
+  const updateResultSingle = await InvoiceSingleModel.updateMany({}, [
+    {
+      $set: {
+        amount: "$amountIn",
+      },
+    },
+    {
+      $unset: ["invoiceInAmount", "invoiceOutAmount"],
+    },
+  ]);
+
+  console.log(`Documents updated: ${updateResultRange.modifiedCount}`);
+  console.log(`Documents updated: ${updateResultSingle.modifiedCount}`);
 };

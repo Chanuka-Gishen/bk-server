@@ -73,7 +73,7 @@ invoiceRoutes.post(
   addBulkInvoicesForSalesBook
 );
 invoiceRoutes.post(
-  "/payment-total",
+  "/cred-payment-total",
   [verifyToken],
   getTotalPaymentsFilteredByDateController
 );

@@ -7,6 +7,7 @@ import {
   downloadInvoicesReportController,
   getSalesBooksController,
   getTotalCashBalanceController,
+  getTotalSalesBooksCashBalanceController,
   updateSalesBookController,
 } from "../controllers/salesBookController.js";
 import { ADMIN_ROLE, MANAGER_ROLE } from "../constants/employeeRoles.js";
@@ -25,9 +26,14 @@ salesBookRoutes.put(
   updateSalesBookController
 );
 salesBookRoutes.get(
-  "/cash-balance",
+  "/cash-balance-total",
   [verifyToken],
   getTotalCashBalanceController
+);
+salesBookRoutes.post(
+  "/cash-balance",
+  [verifyToken],
+  getTotalSalesBooksCashBalanceController
 );
 salesBookRoutes.get("/download-summary", downloadInvoicesReportController);
 

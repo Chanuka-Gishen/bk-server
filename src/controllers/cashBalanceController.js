@@ -20,6 +20,7 @@ import {
 } from "../constants/messageConstants.js";
 import { cashBalanceUpdateSchema } from "../schemas/cashBalance/cashBalanceUpdateSchema.js";
 import { cashBalanceAddSchema } from "../schemas/cashBalance/cashBalanceAddSchema.js";
+import PaymentModel from "../models/paymentsModel.js";
 
 // Add cash balance manually
 export const addCashBalanceController = async (req, res) => {
@@ -277,13 +278,29 @@ export const calculateNetAmount = async (date) => {
     {
       $group: {
         _id: null,
-        totalInAmount: { $sum: "$invoiceInAmount" },
-        totalOutAmount: { $sum: "$invoiceOutAmount" },
+        totalAmount: { $sum: "$invoiceAmount" },
       },
     },
   ];
 
-  const paymentPipeline = [
+  const pipelinePayments = [
+    {
+      $match: {
+        paymentDate: {
+          $gte: new Date(date.setHours(0, 0, 0, 0)), // Start of the day
+          $lte: new Date(date.setHours(23, 59, 59, 999)), // End of the day
+        },
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        totalAmount: { $sum: "$paymentAmount" },
+      },
+    },
+  ];
+
+  const credPaymentPipeline = [
     {
       $match: {
         invoiceCreatedAt: {
@@ -302,15 +319,15 @@ export const calculateNetAmount = async (date) => {
 
   const rangeResult = await InvoiceRangeModel.aggregate(pipeline);
   const singleResult = await InvoiceSingleModel.aggregate(pipeline);
-  const paymentResult = await InvoiceCreditorModel.aggregate(paymentPipeline);
+  const paymentResult = await PaymentModel.aggregate(pipelinePayments);
+  const credPaymentResult = await InvoiceCreditorModel.aggregate(
+    credPaymentPipeline
+  );
 
   const totalInAmount =
-    (rangeResult[0]?.totalInAmount || 0) +
-    (singleResult[0]?.totalInAmount || 0);
-  const totalOutAmount =
-    (rangeResult[0]?.totalOutAmount || 0) +
-    (singleResult[0]?.totalOutAmount || 0);
-  const totalPayments = paymentResult[0]?.totalAmount || 0;
+    (rangeResult[0]?.totalAmount || 0) + (singleResult[0]?.totalAmount || 0);
+  const totalOutAmount = paymentResult[0]?.totalAmount || 0;
+  const totalPayments = credPaymentResult[0]?.totalAmount || 0;
 
   return totalInAmount - totalOutAmount + totalPayments;
 };
