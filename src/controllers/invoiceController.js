@@ -800,7 +800,7 @@ export const addBulkInvoicesForSalesBook = async (req, res) => {
 
           const invoiceNoFrom = parseInt(from);
           const invoiceNoTo = parseInt(to);
-          const invoiceAmount = parseFloat(amountIn ? amountIn : 0);
+          const invoiceAmount = parseFloat(amount ? amount : 0);
 
           const createdDate = excelSerialDateToJSDate(date);
 
@@ -835,7 +835,7 @@ export const addBulkInvoicesForSalesBook = async (req, res) => {
             await newInvoice.save();
           }
         } else if (book.bookType === INVOICE_TYPES.SINGLE) {
-          const [invoice, description, date, amountIn, amount] = row;
+          const [invoice, description, date, amount] = row;
 
           const invoiceNo = parseInt(invoice);
           const invoiceAmount = parseFloat(amount ? amount : 0);
@@ -871,31 +871,4 @@ export const addBulkInvoicesForSalesBook = async (req, res) => {
       .status(httpStatus.BAD_REQUEST)
       .json(ApiResponse.error(bad_request_code, error.message));
   }
-};
-
-export const updateInvoiceModels = async () => {
-  const updateResultRange = await InvoiceRangeModel.updateMany({}, [
-    {
-      $set: {
-        invoiceAmount: "$invoiceInAmount",
-      },
-    },
-    {
-      $unset: ["invoiceInAmount", "invoiceOutAmount"],
-    },
-  ]);
-
-  const updateResultSingle = await InvoiceSingleModel.updateMany({}, [
-    {
-      $set: {
-        amount: "$amountIn",
-      },
-    },
-    {
-      $unset: ["invoiceInAmount", "invoiceOutAmount"],
-    },
-  ]);
-
-  console.log(`Documents updated: ${updateResultRange.modifiedCount}`);
-  console.log(`Documents updated: ${updateResultSingle.modifiedCount}`);
 };
