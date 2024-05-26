@@ -140,7 +140,7 @@ export const PaymentsGetController = async (req, res) => {
     }
 
     const invoices = await PaymentModel.find(query)
-      .sort({ paymentDate: 1 })
+      .sort({ paymentDate: -1 })
       .skip(skip)
       .limit(limit);
     const documentCount = await PaymentModel.countDocuments(query);
