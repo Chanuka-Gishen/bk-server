@@ -217,7 +217,7 @@ export const creditorInvoicesController = async (req, res) => {
         },
       },
       {
-        $sort: { credInvoiceDueDate: 1 },
+        $sort: { credInvoiceDueDate: -1 },
       },
     ]);
 
@@ -271,7 +271,7 @@ export const getAllCredInvoicesController = async (req, res) => {
         $match: {},
       },
       {
-        $sort: { credInvoiceDueDate: 1 },
+        $sort: { credInvoiceDueDate: -1 },
       },
       {
         $skip: skip,
@@ -332,7 +332,7 @@ export const filterCreInvoicessByDaysController = async (req, res) => {
 
     let invoices = await CredInvoiceModel.find(query)
       .populate("credInvoicedCreditor")
-      .sort({ credInvoiceDueDate: 1 })
+      .sort({ credInvoiceDueDate: -1 })
       .skip(skip)
       .limit(limit);
 

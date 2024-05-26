@@ -14,6 +14,8 @@ import { invoiceRangeAddSchema } from "../schemas/invoice/invoiceRangeAddSchema.
 
 import {
   book_not_found,
+  bulk_empty_data,
+  bulk_headers_mismatch,
   credInvoice_not_found,
   invoice_already_paid,
   invoice_balance_not_invalid,
@@ -531,46 +533,38 @@ export const invoicesBySalesBooksController = async (req, res) => {
     let invoices;
     let documentCount;
 
-    const pipeline = [
-      {
-        $match: {
-          invoiceSalesBookRef: new ObjectId(book._id),
-        },
-      },
-      {
-        $sort: {
-          invoiceCreatedAt: 1,
-        },
-      },
-      {
-        $skip: skip,
-      },
-      {
-        $limit: limit,
-      },
-    ];
+    let query;
 
     if (date) {
       const filterDate = new Date(date);
       const startOfDay = new Date(filterDate.setHours(0, 0, 0, 0));
       const endOfDay = new Date(filterDate.setHours(23, 59, 59, 999));
 
-      pipeline[0].$match = {
+      query = {
+        invoiceSalesBookRef: new ObjectId(book._id),
         invoiceCreatedAt: {
           $gte: startOfDay,
           $lte: endOfDay,
         },
       };
+    } else {
+      query = { invoiceSalesBookRef: new ObjectId(book._id) };
     }
 
     switch (type) {
       case INVOICE_TYPES.RANGE:
-        invoices = await InvoiceRangeModel.aggregate(pipeline);
-        documentCount = await InvoiceRangeModel.countDocuments();
+        invoices = await InvoiceRangeModel.find(query)
+          .sort({ invoiceCreatedAt: -1 })
+          .skip(skip)
+          .limit(limit);
+        documentCount = await InvoiceRangeModel.countDocuments(query);
         break;
       case INVOICE_TYPES.SINGLE:
-        invoices = await InvoiceSingleModel.aggregate(pipeline);
-        documentCount = await InvoiceSingleModel.countDocuments();
+        invoices = await InvoiceSingleModel.find(query)
+          .sort({ invoiceCreatedAt: -1 })
+          .skip(skip)
+          .limit(limit);
+        documentCount = await InvoiceSingleModel.countDocuments(query);
         break;
       default:
         break;
@@ -617,7 +611,7 @@ export const getAllCreditorPayment = async (req, res) => {
     const invoices = await InvoiceCreditorModel.find(query)
       .populate("invoiceCreditorRef")
       .populate("invoiceCreditorInvoiceRef")
-      .sort({ invoiceCreatedAt: 1 })
+      .sort({ invoiceCreatedAt: -1 })
       .skip(skip)
       .limit(limit);
 
@@ -792,6 +786,52 @@ export const addBulkInvoicesForSalesBook = async (req, res) => {
         .json(ApiResponse.error(salesBook_error_code, book_not_found));
     }
 
+    let expectedHeadersExists = false;
+    // Define the expected headers
+    const expectedHeadersSingleInvoices = [
+      "invoice",
+      "description",
+      "date",
+      "amount",
+    ];
+    const expectedHeadersRangeInvoices = [
+      "from",
+      "to",
+      "description",
+      "date",
+      "amount",
+    ];
+
+    if (rows.length === 0) {
+      return res
+        .status(httpStatus.PRECONDITION_FAILED)
+        .json(ApiResponse.error(salesBook_error_code, bulk_empty_data));
+    }
+
+    const headers = rows[0];
+
+    switch (book.bookType) {
+      case INVOICE_TYPES.RANGE:
+        expectedHeadersExists = expectedHeadersRangeInvoices.every((header) =>
+          headers.includes(header)
+        );
+        break;
+      case INVOICE_TYPES.SINGLE:
+        expectedHeadersExists = expectedHeadersSingleInvoices.every((header) =>
+          headers.includes(header)
+        );
+        break;
+
+      default:
+        break;
+    }
+
+    if (!expectedHeadersExists) {
+      return res
+        .status(httpStatus.PRECONDITION_FAILED)
+        .json(ApiResponse.error(salesBook_error_code, bulk_headers_mismatch));
+    }
+
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i];
       if (row.length > 0) {
@@ -826,7 +866,7 @@ export const addBulkInvoicesForSalesBook = async (req, res) => {
             const newInvoice = new InvoiceRangeModel({
               invoiceNoFrom,
               invoiceNoTo,
-              invoiceDesciption: description,
+              invoiceDescription: description,
               invoiceAmount,
               invoiceCreatedAt: new Date(createdDate),
               invoiceSalesBookRef: new ObjectId(book._id),
@@ -850,7 +890,7 @@ export const addBulkInvoicesForSalesBook = async (req, res) => {
           if (!existingInvoice) {
             const newInvoice = new InvoiceSingleModel({
               invoiceNo,
-              invoiceDesciption: description,
+              invoiceDescription: description,
               invoiceAmount,
               invoiceCreatedAt: new Date(createdDate),
               invoiceSalesBookRef: new ObjectId(book._id),

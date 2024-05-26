@@ -9,7 +9,6 @@ import mongoose from "mongoose";
 import ApiResponse from "./src/services/ApiResponse.js";
 import router from "./src/routes/index.js";
 import { server_default_message } from "./src/constants/messageConstants.js";
-import { createDefaultAdmin } from "./src/controllers/employeeController.js";
 
 dotenv.config();
 const app = express();
@@ -52,8 +51,6 @@ db.on("error", (error) => {
 
 db.once("connected", () => {
   console.log("Connected to MongoDB");
-
-  createDefaultAdmin();
 
   app.listen(port, () => {
     console.log(`Server is running at http://localhost:${port}`);

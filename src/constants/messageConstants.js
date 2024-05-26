@@ -20,6 +20,9 @@ export const emp_pwd_reset = "Successfully reseted";
 export const book_exists = "SalesBook already created";
 export const book_not_found = "SalesBook not found";
 
+export const bulk_empty_data = "Excel Sheet is empty";
+export const bulk_headers_mismatch = "Column headers mismatch detected";
+
 export const creditor_exists = "Creditor already exists";
 export const creditor_created = "Creditor created successfully";
 export const creditor_updated = "Creditor updated successfully";
