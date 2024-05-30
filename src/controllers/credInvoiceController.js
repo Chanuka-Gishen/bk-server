@@ -128,11 +128,21 @@ export const updateCredInvoiceController = async (req, res) => {
     const newBalance = difference + credInvoice.credInvoiceBalance;
 
     credInvoice.credInvoiceAmount = credInvoiceAmount;
-    credInvoice.credInvoiceBalance = newBalance;
+
     credInvoice.credInvoiceNo = credInvoiceNo;
     credInvoice.credInvoiceStatus = credInvoiceStatus;
-    credInvoice.credInvoicePaidDate =
-      credInvoiceStatus === PAYMENT_STATUS.PAID ? credInvoicePaidDate : null;
+
+    if (newBalance != credInvoice.credInvoiceBalance && newBalance != 0) {
+      credInvoice.credInvoiceStatus = PAYMENT_STATUS.NOTPAID;
+      credInvoice.credInvoicePaidDate = null;
+    } else {
+      credInvoice.credInvoiceStatus = PAYMENT_STATUS.PAID;
+      if (!credInvoice.credInvoicePaidDate) {
+        credInvoice.credInvoicePaidDate = new Date();
+      }
+    }
+
+    credInvoice.credInvoiceBalance = newBalance;
 
     if (credInvoiceDate != credInvoice.credInvoiceDate) {
       const credInvocieDueDate = new Date(credInvoiceDate);

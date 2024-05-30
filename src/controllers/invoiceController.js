@@ -375,19 +375,18 @@ export const updateInvoiceCreditorController = async (req, res) => {
         .json(ApiResponse.error(invoice_error_code, invoice_not_found));
     }
 
-    if (mainInvoice.credInvoiceStatus === PAYMENT_STATUS.PAID) {
-      return res
-        .status(httpStatus.BAD_REQUEST)
-        .json(ApiResponse.error(invoice_info_code, invoice_already_paid));
-    }
+    // if (mainInvoice.credInvoiceStatus === PAYMENT_STATUS.PAID) {
+    //   return res
+    //     .status(httpStatus.BAD_REQUEST)
+    //     .json(ApiResponse.error(invoice_info_code, invoice_already_paid));
+    // }
 
     if (invoiceAmount != invoice.invoiceAmount) {
       const newValue = invoiceAmount - invoice.invoiceAmount;
 
-      if (
-        mainInvoice.credInvoiceBalance <
-        newValue + mainInvoice.credInvoiceBalance
-      ) {
+      const newBalance = mainInvoice.credInvoiceBalance - newValue;
+
+      if (newBalance < 0) {
         return res
           .status(httpStatus.PRECONDITION_FAILED)
           .json(
@@ -395,12 +394,15 @@ export const updateInvoiceCreditorController = async (req, res) => {
           );
       }
 
-      mainInvoice.credInvoiceBalance += newValue;
-
-      if (mainInvoice.credInvoiceBalance + newValue === 0) {
+      if (newBalance === 0) {
         mainInvoice.credInvoiceStatus = PAYMENT_STATUS.PAID;
         mainInvoice.credInvoicePaidDate = new Date();
+      } else {
+        mainInvoice.credInvoiceStatus = PAYMENT_STATUS.NOTPAID;
+        mainInvoice.credInvoicePaidDate = null;
       }
+
+      mainInvoice.credInvoiceBalance = newBalance;
 
       await mainInvoice.save();
     }
@@ -589,14 +591,16 @@ export const getAllCreditorPayment = async (req, res) => {
   try {
     const page = parseInt(req.query.page);
     const limit = parseInt(req.query.limit);
-    const date = req.body.filteredDate;
+    const filteredDate = req.query.filteredDate;
+    const customerNameFilter = req.query.customerName;
 
     const skip = page * limit;
 
     let query = {};
 
-    if (date) {
-      const filterDate = new Date(date);
+    // Conditionally add $match for filteredDate
+    if (filteredDate) {
+      const filterDate = new Date(filteredDate);
       const startOfDay = new Date(filterDate.setHours(0, 0, 0, 0));
       const endOfDay = new Date(filterDate.setHours(23, 59, 59, 999));
 
@@ -608,14 +612,64 @@ export const getAllCreditorPayment = async (req, res) => {
       };
     }
 
-    const invoices = await InvoiceCreditorModel.find(query)
-      .populate("invoiceCreditorRef")
-      .populate("invoiceCreditorInvoiceRef")
-      .sort({ invoiceCreatedAt: -1 })
-      .skip(skip)
-      .limit(limit);
+    const aggregatePipeline = [
+      // Add initial $match stages for filters if they are provided
+      ...(filteredDate ? [{ $match: query }] : []),
 
-    const documentCount = await InvoiceCreditorModel.countDocuments();
+      {
+        $lookup: {
+          from: "creditors",
+          localField: "invoiceCreditorRef",
+          foreignField: "_id",
+          as: "invoiceCreditorRef",
+        },
+      },
+      {
+        $unwind: "$invoiceCreditorRef",
+      },
+      ...(customerNameFilter
+        ? [
+            {
+              $match: {
+                "invoiceCreditorRef.creditorName": {
+                  $regex: customerNameFilter, // Regular expression for case-insensitive search
+                  $options: "i",
+                },
+              },
+            },
+          ]
+        : []),
+      {
+        $lookup: {
+          from: "credinvoices",
+          localField: "invoiceCreditorInvoiceRef",
+          foreignField: "_id",
+          as: "invoiceCreditorInvoiceRef",
+        },
+      },
+      {
+        $unwind: "$invoiceCreditorInvoiceRef",
+      },
+
+      {
+        $sort: { invoiceCreatedAt: -1 },
+      },
+      {
+        $skip: skip,
+      },
+      {
+        $limit: limit,
+      },
+    ];
+
+    const invoices = await InvoiceCreditorModel.aggregate(aggregatePipeline);
+
+    // Manually filter the populated results to count the number of documents that match the customerName filter
+    const filteredInvoices = invoices.filter(
+      (invoice) => invoice.invoiceCreditorRef
+    );
+
+    const documentCount = filteredInvoices.length;
 
     return res.status(httpStatus.OK).json(
       ApiResponse.response(invoice_success_code, success_message, {

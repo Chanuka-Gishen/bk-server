@@ -11,6 +11,7 @@ import {
   createInvoiceSingleController,
   deleteCreditorPaymentController,
   deleteInvoiceController,
+  getAllCreditorPayment,
   getCreditorPaymentsInvoices,
   getTotalPaymentsFilteredByDateController,
   invoicesBySalesBooksController,
@@ -67,6 +68,7 @@ invoiceRoutes.get(
   [verifyToken],
   getCreditorPaymentsInvoices
 );
+invoiceRoutes.get("/cred-payments", [verifyToken], getAllCreditorPayment);
 invoiceRoutes.post(
   "/bulk-invoices/:id",
   [verifyToken, authorize([ADMIN_ROLE, MANAGER_ROLE]), upload.single("file")],
